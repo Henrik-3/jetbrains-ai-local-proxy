@@ -1,0 +1,47 @@
+<!-- File: src/main/resources/META-INF/plugin.xml -->
+<idea-plugin>
+    <id>com.hdev.lmstudioproxy</id>
+    <name>LM Studio Proxy</name>
+    <version>1.0.0</version>
+    <vendor email="support@example.com" url="https://example.com">Example Vendor</vendor>
+
+    <description><![CDATA[
+    A proxy plugin that converts LM Studio API requests to OpenAI-compatible API calls.
+    Allows JetBrains AI to work with any OpenAI-compatible endpoint.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.java</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <applicationConfigurable
+                parentId="tools"
+                instance="com.hdev.lmstudioproxy.settings.ProxySettingsConfigurable"
+                id="com.hdev.lmstudioproxy.settings.ProxySettingsConfigurable"
+                displayName="LM Studio Proxy"/>
+
+        <applicationService
+                serviceInterface="com.hdev.lmstudioproxy.settings.ProxySettingsState"
+                serviceImplementation="com.hdev.lmstudioproxy.settings.ProxySettingsState"/>
+
+        <applicationService
+                serviceInterface="com.hdev.lmstudioproxy.server.ProxyServer"
+                serviceImplementation="com.hdev.lmstudioproxy.server.ProxyServer"/>
+    </extensions>
+
+    <actions>
+        <action id="StartProxyServer" class="com.hdev.lmstudioproxy.actions.StartServerAction" text="Start LM Studio Proxy">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+        <action id="StopProxyServer" class="com.hdev.lmstudioproxy.actions.StopServerAction" text="Stop LM Studio Proxy">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+    </actions>
+
+    <project-components>
+        <component>
+            <implementation-class>com.hdev.lmstudioproxy.ProxyProjectComponent</implementation-class>
+        </component>
+    </project-components>
+
+</idea-plugin>
