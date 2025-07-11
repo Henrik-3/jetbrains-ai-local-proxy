@@ -1,0 +1,14 @@
+/out/
+
+# Ignore everything inside the 'build' directory...
+/build/**
+
+# ...BUT, do NOT ignore the 'distributions' directory itself
+!/build/distributions/
+
+# ...AND, do NOT ignore anything inside the 'distributions' directory
+!/build/distributions/**
+
+.idea
+.gradle
+gradle

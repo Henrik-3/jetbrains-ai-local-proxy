@@ -11,43 +11,139 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Service to communicate with OpenAI-style API
+ * Service to communicate with OpenAI-style API with improved connection stability
  */
 public class OpenAIApiService {
     private static final Logger LOG = Logger.getInstance(OpenAIApiService.class);
     private final ObjectMapper objectMapper;
+
+    // Cache for models response to reduce frequent API calls
+    private static final ConcurrentHashMap<String, CachedResponse> modelCache = new ConcurrentHashMap<>();
+    private static final Duration CACHE_DURATION = Duration.ofMinutes(5); // Cache for 5 minutes
+
+    // Connection configuration
+    private static final int CONNECT_TIMEOUT = 30000; // 30 seconds
+    private static final int READ_TIMEOUT = 60000;    // 60 seconds
+    private static final int MAX_RETRIES = 3;
+    private static final long INITIAL_RETRY_DELAY = 1000; // 1 second
+
+    /**
+     * Cached response wrapper
+     */
+    private static class CachedResponse {
+        final ModelsResponse response;
+        final Instant timestamp;
+
+        CachedResponse(ModelsResponse response) {
+            this.response = response;
+            this.timestamp = Instant.now();
+        }
+
+        boolean isExpired() {
+            return Duration.between(timestamp, Instant.now()).compareTo(CACHE_DURATION) > 0;
+        }
+    }
 
     public OpenAIApiService() {
         this.objectMapper = new ObjectMapper();
     }
 
     /**
-     * Fetches models from OpenAI-style API
+     * Clears the model cache
+     */
+    public static void clearCache() {
+        modelCache.clear();
+    }
+
+    /**
+     * Gets the current cache size
+     */
+    public static int getCacheSize() {
+        return modelCache.size();
+    }
+
+    /**
+     * Fetches models from OpenAI-style API with caching and retry logic
      * @return ModelsResponse containing the list of models
      */
     public ModelsResponse fetchModels() {
+        ProxySettingsState settings = ProxySettingsState.getInstance();
+        String openAIUrl = buildOpenAIUrl(settings.openaiApiUrl);
+        String cacheKey = openAIUrl + "|" + settings.openaiApiKey; // Include API key in cache key
+
+        // Check cache first
+        CachedResponse cached = modelCache.get(cacheKey);
+        if (cached != null && !cached.isExpired()) {
+            LOG.info("Returning cached models response for: " + openAIUrl);
+            return cached.response;
+        }
+
+        LOG.info("Fetching models from OpenAI-style API at: " + openAIUrl);
+
+        // Try with retry logic
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                ModelsResponse response = fetchModelsWithRetry(openAIUrl, settings, attempt);
+
+                // Cache successful response
+                modelCache.put(cacheKey, new CachedResponse(response));
+
+                return response;
+
+            } catch (Exception e) {
+                LOG.warn("Attempt " + attempt + " failed to fetch models from OpenAI-style API: " + e.getMessage());
+
+                if (attempt == MAX_RETRIES) {
+                    LOG.error("All retry attempts failed for OpenAI-style API", e);
+                    return createFallbackResponse();
+                }
+
+                // Wait before retry with exponential backoff
+                try {
+                    long delay = INITIAL_RETRY_DELAY * (1L << (attempt - 1)); // Exponential backoff
+                    Thread.sleep(delay);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    return createFallbackResponse();
+                }
+            }
+        }
+
+        return createFallbackResponse();
+    }
+
+    /**
+     * Internal method to fetch models with improved connection handling
+     */
+    private ModelsResponse fetchModelsWithRetry(String openAIUrl, ProxySettingsState settings, int attempt) throws Exception {
+        URL url = new URL(openAIUrl + "/v1/models");
+        HttpURLConnection connection = null;
+
         try {
-            ProxySettingsState settings = ProxySettingsState.getInstance();
-            String openAIUrl = buildOpenAIUrl(settings.openaiApiUrl);
-            
-            LOG.info("Fetching models from OpenAI-style API at: " + openAIUrl);
-            
-            URL url = new URL(openAIUrl + "/v1/models");
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
             connection.setRequestProperty("Content-Type", "application/json");
-            
+            connection.setRequestProperty("User-Agent", "JetBrains-LMStudio-Proxy/1.0");
+            connection.setRequestProperty("Connection", "close"); // Prevent connection reuse issues
+
             // Add authorization header if API key is provided
             if (!settings.openaiApiKey.isEmpty()) {
                 connection.setRequestProperty("Authorization", "Bearer " + settings.openaiApiKey);
             }
-            
-            connection.setConnectTimeout(5000); // 5 second timeout
-            connection.setReadTimeout(10000); // 10 second timeout
+
+            // Use longer timeouts for better stability
+            connection.setConnectTimeout(CONNECT_TIMEOUT);
+            connection.setReadTimeout(READ_TIMEOUT);
+
+            // Disable caching to ensure fresh responses
+            connection.setUseCaches(false);
 
             int responseCode = connection.getResponseCode();
             if (responseCode == 200) {
@@ -58,20 +154,33 @@ public class OpenAIApiService {
                         response.append(line);
                     }
                 }
-                
+
                 String responseBody = response.toString();
+                LOG.info("Received response from OpenAI-style API (attempt " + attempt + "): " + responseBody.length() + " characters");
 
                 // Parse the response and convert to our format
                 return parseAndConvertResponse(responseBody);
-                
+
             } else {
-                LOG.warn("OpenAI-style API returned status code: " + responseCode);
-                return createFallbackResponse();
+                String errorMessage = "OpenAI-style API returned status code: " + responseCode;
+                if (responseCode >= 500) {
+                    // Server errors are retryable
+                    throw new IOException(errorMessage);
+                } else {
+                    // Client errors are not retryable
+                    LOG.warn(errorMessage);
+                    return createFallbackResponse();
+                }
             }
-            
-        } catch (Exception e) {
-            LOG.warn("Failed to fetch models from OpenAI-style API: " + e.getMessage(), e);
-            return createFallbackResponse();
+
+        } finally {
+            if (connection != null) {
+                try {
+                    connection.disconnect();
+                } catch (Exception e) {
+                    LOG.debug("Error disconnecting HTTP connection", e);
+                }
+            }
         }
     }
 

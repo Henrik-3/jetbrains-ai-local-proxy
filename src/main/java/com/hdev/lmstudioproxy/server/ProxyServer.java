@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.hdev.lmstudioproxy.model.ModelsResponse;
 import com.hdev.lmstudioproxy.service.ApiServiceFactory;
 import com.hdev.lmstudioproxy.settings.ProxySettingsState;
+import com.hdev.lmstudioproxy.util.ResponseTransformer;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
@@ -126,23 +127,56 @@ public final class ProxyServer {
                 String requestBody = readRequestBody(exchange);
                 LOG.info("Received chat completions request, body length: " + requestBody.length());
 
+                // Check if streaming is requested
+                boolean isStreaming = isStreamingRequested(requestBody);
+                LOG.info("Streaming requested: " + isStreaming);
+
                 // Filter request body to remove tool_choice when tools is empty
                 String filteredRequestBody = filterRequestBody(requestBody);
 
-                // Forward to target API
-                String response = forwardToOpenAI("/v1/chat/completions", filteredRequestBody);
-                LOG.info("Received response, length: " + response.length());
-
-                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-                byte[] responseBytes = response.getBytes("UTF-8");
-                exchange.sendResponseHeaders(200, responseBytes.length);
-                try (OutputStream os = exchange.getResponseBody()) {
-                    os.write(responseBytes);
-                    os.flush();
+                if (isStreaming) {
+                    // Handle streaming response
+                    handleStreamingResponse(exchange, filteredRequestBody);
+                } else {
+                    // Handle regular (non-streaming) response
+                    handleRegularResponse(exchange, filteredRequestBody);
                 }
             } catch (Exception e) {
                 LOG.error("Error handling chat completions request", e);
                 sendErrorResponse(exchange, 500, "Internal server error: " + e.getMessage());
+            }
+        }
+
+        private void handleRegularResponse(HttpExchange exchange, String requestBody) throws IOException {
+            // Forward to target API
+            String response = forwardToOpenAI("/v1/chat/completions", requestBody);
+            LOG.info("Received response, length: " + response.length());
+
+            // Transform OpenAI response to LM Studio format
+            String transformedResponse = ResponseTransformer.transformChatCompletionResponse(response);
+            LOG.info("Transformed response, length: " + transformedResponse.length());
+
+            exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+            byte[] responseBytes = transformedResponse.getBytes("UTF-8");
+            exchange.sendResponseHeaders(200, responseBytes.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(responseBytes);
+                os.flush();
+            }
+        }
+
+        private void handleStreamingResponse(HttpExchange exchange, String requestBody) throws IOException {
+            // Set headers for streaming response
+            exchange.getResponseHeaders().set("Content-Type", "text/event-stream; charset=UTF-8");
+            exchange.getResponseHeaders().set("Cache-Control", "no-cache");
+            exchange.getResponseHeaders().set("Connection", "keep-alive");
+            exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+
+            // Use chunked transfer encoding (length = 0 means chunked)
+            exchange.sendResponseHeaders(200, 0);
+
+            try (OutputStream os = exchange.getResponseBody()) {
+                forwardStreamingToOpenAI("/v1/chat/completions", requestBody, os);
             }
         }
     }
@@ -211,6 +245,24 @@ public final class ProxyServer {
     }
 
     /**
+     * Checks if streaming is requested in the request body
+     */
+    private static boolean isStreamingRequested(String requestBody) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode rootNode = mapper.readTree(requestBody);
+
+            if (rootNode.has("stream")) {
+                return rootNode.get("stream").asBoolean(false);
+            }
+            return false;
+        } catch (Exception e) {
+            LOG.warn("Failed to parse request body for streaming check: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Filters the request body to remove tool_choice parameter when tools array is empty or null
      */
     private static String filterRequestBody(String requestBody) {
@@ -220,16 +272,34 @@ public final class ProxyServer {
 
             if (rootNode.isObject()) {
                 ObjectNode objectNode = (ObjectNode) rootNode;
+                boolean modified = false;
+
                 JsonNode toolsNode = objectNode.get("tools");
+                boolean rootToolsIsEmpty = toolsNode == null ||
+                        toolsNode.isNull() ||
+                        (toolsNode.isArray() && toolsNode.isEmpty());
 
-                // Check if tools is null, missing, or empty array
-                boolean toolsEmpty = toolsNode == null ||
-                                   toolsNode.isNull() ||
-                                   (toolsNode.isArray() && toolsNode.size() == 0);
+                if (rootToolsIsEmpty) {
+                    objectNode.remove("tools");
+                    modified = true;
 
-                if (toolsEmpty && objectNode.has("tool_choice")) {
-                    LOG.info("Removing tool_choice parameter because tools array is empty or null");
-                    objectNode.remove("tool_choice");
+                    JsonNode messagesNode = objectNode.get("messages");
+                    if (messagesNode != null && messagesNode.isArray()) {
+                        for (JsonNode messageNode : messagesNode) {
+                            if (messageNode.isObject()) {
+                                ObjectNode messageObject = (ObjectNode) messageNode;
+                                if (messageObject.has("tool_calls")) {
+                                    LOG.info("Removing tool_calls from message because root level tools array is empty or null");
+                                    messageObject.remove("tool_calls");
+                                    modified = true;
+                                }
+                            }
+                        }
+                    }
+
+                }
+
+                if (modified) {
                     return mapper.writeValueAsString(objectNode);
                 }
             }
@@ -253,20 +323,22 @@ public final class ProxyServer {
             URL url = new URL(targetUrl);
             connection = (HttpURLConnection) url.openConnection();
 
-            // Set timeouts to prevent hanging
-            connection.setConnectTimeout(10000); // 10 seconds
-            connection.setReadTimeout(30000);    // 30 seconds
+            // Set more generous timeouts to prevent hanging
+            connection.setConnectTimeout(30000); // 30 seconds
+            connection.setReadTimeout(120000);   // 120 seconds for long responses
 
             connection.setRequestMethod("POST");
             connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
             connection.setRequestProperty("Accept", "application/json");
             connection.setRequestProperty("User-Agent", "JetBrains-LMStudio-Proxy/1.0");
+            connection.setRequestProperty("Connection", "close"); // Prevent connection reuse issues
 
             if (!settings.openaiApiKey.isEmpty()) {
                 connection.setRequestProperty("Authorization", "Bearer " + settings.openaiApiKey);
             }
             connection.setDoOutput(true);
             connection.setDoInput(true);
+            connection.setUseCaches(false); // Disable caching
 
             // Send request body
             if (requestBody != null && !requestBody.trim().isEmpty()) {
@@ -334,6 +406,116 @@ public final class ProxyServer {
         } catch (Exception e) {
             LOG.error("Failed to forward request to target server", e);
             return "{\"error\": \"Failed to forward request: " + e.getMessage().replace("\"", "\\\"") + "\"}";
+        } finally {
+            if (connection != null) {
+                try {
+                    connection.disconnect();
+                } catch (Exception e) {
+                    LOG.warn("Failed to disconnect connection", e);
+                }
+            }
+        }
+    }
+
+    /**
+     * Forwards a streaming request to the target API and streams the response back
+     */
+    private static void forwardStreamingToOpenAI(String endpoint, String requestBody, OutputStream responseStream) throws IOException {
+        HttpURLConnection connection = null;
+        try {
+            ProxySettingsState settings = ProxySettingsState.getInstance();
+            String targetUrl = buildTargetUrl(settings, endpoint);
+            LOG.info("Forwarding streaming request to: " + targetUrl + " (API Mode: " + settings.apiMode + ")");
+
+            URL url = new URL(targetUrl);
+            connection = (HttpURLConnection) url.openConnection();
+
+            // Set timeouts
+            connection.setConnectTimeout(30000); // 30 seconds
+            connection.setReadTimeout(300000);   // 5 minutes for streaming
+
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            connection.setRequestProperty("Accept", "text/event-stream");
+            connection.setRequestProperty("User-Agent", "JetBrains-LMStudio-Proxy/1.0");
+            connection.setRequestProperty("Connection", "keep-alive");
+
+            if (!settings.openaiApiKey.isEmpty()) {
+                connection.setRequestProperty("Authorization", "Bearer " + settings.openaiApiKey);
+            }
+            connection.setDoOutput(true);
+            connection.setDoInput(true);
+            connection.setUseCaches(false);
+
+            // Send request body
+            if (requestBody != null && !requestBody.trim().isEmpty()) {
+                try (OutputStream os = connection.getOutputStream()) {
+                    os.write(requestBody.getBytes("UTF-8"));
+                    os.flush();
+                }
+            }
+
+            int responseCode = connection.getResponseCode();
+            LOG.info("Streaming response code: " + responseCode);
+
+            InputStream inputStream = null;
+            try {
+                if (responseCode >= 200 && responseCode < 300) {
+                    inputStream = connection.getInputStream();
+                } else {
+                    inputStream = connection.getErrorStream();
+                    if (inputStream == null) {
+                        inputStream = connection.getInputStream();
+                    }
+                }
+
+                if (inputStream != null) {
+                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"))) {
+                        String line;
+
+                        while ((line = reader.readLine()) != null) {
+                            // For SSE format, we need to process each line individually
+                            if (line.trim().startsWith("data: ")) {
+                                // Transform the SSE line
+                                String transformedLine = ResponseTransformer.transformChatCompletionResponse(line);
+
+                                // Write the transformed line to response stream
+                                responseStream.write(transformedLine.getBytes("UTF-8"));
+                                responseStream.write("\n".getBytes("UTF-8")); // Add newline for SSE format
+                                responseStream.flush();
+
+                                // Check if this is the end of stream
+                                if (line.trim().equals("data: [DONE]")) {
+                                    break;
+                                }
+                            } else if (line.trim().isEmpty()) {
+                                // Empty lines are part of SSE format - pass them through
+                                responseStream.write("\n".getBytes("UTF-8"));
+                                responseStream.flush();
+                            } else {
+                                // Pass through other lines (like event: or id: lines)
+                                responseStream.write((line + "\n").getBytes("UTF-8"));
+                                responseStream.flush();
+                            }
+                        }
+                    }
+                }
+            } finally {
+                if (inputStream != null) {
+                    try {
+                        inputStream.close();
+                    } catch (IOException e) {
+                        LOG.warn("Failed to close input stream", e);
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            LOG.error("Failed to forward streaming request to target server", e);
+            // Send error as SSE event
+            String errorEvent = "data: {\"error\": \"Failed to forward request: " + e.getMessage().replace("\"", "\\\"") + "\"}\n\n";
+            responseStream.write(errorEvent.getBytes("UTF-8"));
+            responseStream.flush();
         } finally {
             if (connection != null) {
                 try {
