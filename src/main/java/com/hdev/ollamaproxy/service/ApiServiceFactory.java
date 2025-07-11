@@ -1,8 +1,8 @@
-package com.hdev.lmstudioproxy.service;
+package com.hdev.ollamaproxy.service;
 
-import com.hdev.lmstudioproxy.model.ApiMode;
-import com.hdev.lmstudioproxy.model.ModelsResponse;
-import com.hdev.lmstudioproxy.settings.ProxySettingsState;
+import com.hdev.ollamaproxy.model.ApiMode;
+import com.hdev.ollamaproxy.model.ModelsResponse;
+import com.hdev.ollamaproxy.settings.ProxySettingsState;
 
 /**
  * Factory class to create appropriate API service based on the configured mode
@@ -14,17 +14,16 @@ public class ApiServiceFactory {
      */
     public static ApiServiceInterface getApiService() {
         ProxySettingsState settings = ProxySettingsState.getInstance();
-        ApiMode mode = settings.apiMode;
+        ApiMode mode = settings.apiMode != null ? settings.apiMode : ApiMode.OPENAI_STYLE; // Default to OPENAI_STYLE
         
         switch (mode) {
-            case LM_STUDIO:
+            case LM_STUDIO: // Kept for potential backend compatibility
                 return new LMStudioApiServiceWrapper();
             case OPENWEBUI:
                 return new OpenWebUIApiServiceWrapper();
             case OPENAI_STYLE:
+            default: // Fallback to OPENAI_STYLE
                 return new OpenAIApiServiceWrapper();
-            default:
-                return new LMStudioApiServiceWrapper(); // Default fallback
         }
     }
     

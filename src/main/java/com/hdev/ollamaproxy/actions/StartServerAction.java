@@ -1,7 +1,7 @@
 // File: src/main/java/com/example/lmstudioproxy/actions/StartServerAction.java
-package com.hdev.lmstudioproxy.actions;
+package com.hdev.ollamaproxy.actions;
 
-import com.hdev.lmstudioproxy.server.ProxyServer;
+import com.hdev.ollamaproxy.server.ProxyServer;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.ui.Messages;

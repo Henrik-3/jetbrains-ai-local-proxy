@@ -1,4 +1,4 @@
-package com.hdev.lmstudioproxy.model;
+package com.hdev.ollamaproxy.model;
 
 /**
  * Enum representing different API modes supported by the proxy

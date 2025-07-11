@@ -1,14 +1,14 @@
-package com.hdev.lmstudioproxy.model;
+package com.hdev.ollamaproxy.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 /**
- * Represents the LM Studio chat completion response format
+ * Represents the OpenAI-style chat completion response format
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class LMStudioChatResponse {
+public class OpenAIChatResponse {
     @JsonProperty("id")
     private String id;
     
@@ -25,14 +25,14 @@ public class LMStudioChatResponse {
     private String systemFingerprint;
     
     @JsonProperty("choices")
-    private List<LMStudioChoice> choices;
+    private List<OpenAIChoice> choices;
 
     // Default constructor
-    public LMStudioChatResponse() {}
+    public OpenAIChatResponse() {}
 
     // Constructor
-    public LMStudioChatResponse(String id, String object, Long created, String model, 
-                               String systemFingerprint, List<LMStudioChoice> choices) {
+    public OpenAIChatResponse(String id, String object, Long created, String model,
+                               String systemFingerprint, List<OpenAIChoice> choices) {
         this.id = id;
         this.object = object;
         this.created = created;
@@ -57,6 +57,6 @@ public class LMStudioChatResponse {
     public String getSystemFingerprint() { return systemFingerprint; }
     public void setSystemFingerprint(String systemFingerprint) { this.systemFingerprint = systemFingerprint; }
 
-    public List<LMStudioChoice> getChoices() { return choices; }
-    public void setChoices(List<LMStudioChoice> choices) { this.choices = choices; }
+    public List<OpenAIChoice> getChoices() { return choices; }
+    public void setChoices(List<OpenAIChoice> choices) { this.choices = choices; }
 }

@@ -1,9 +1,9 @@
-package com.hdev.lmstudioproxy.service;
+package com.hdev.ollamaproxy.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hdev.lmstudioproxy.model.LMStudioModel;
-import com.hdev.lmstudioproxy.model.ModelsResponse;
-import com.hdev.lmstudioproxy.settings.ProxySettingsState;
+import com.hdev.ollamaproxy.model.OpenAIModel; // Changed from LMStudioModel
+import com.hdev.ollamaproxy.model.ModelsResponse;
+import com.hdev.ollamaproxy.settings.ProxySettingsState;
 import com.intellij.openapi.diagnostic.Logger;
 
 import java.io.BufferedReader;
@@ -18,10 +18,10 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Service to communicate with OpenAI-style API with improved connection stability
+ * Service to communicate with OpenWebUI API with improved connection stability
  */
-public class OpenAIApiService {
-    private static final Logger LOG = Logger.getInstance(OpenAIApiService.class);
+public class OpenWebUIApiService {
+    private static final Logger LOG = Logger.getInstance(OpenWebUIApiService.class);
     private final ObjectMapper objectMapper;
 
     // Cache for models response to reduce frequent API calls
@@ -51,7 +51,7 @@ public class OpenAIApiService {
         }
     }
 
-    public OpenAIApiService() {
+    public OpenWebUIApiService() {
         this.objectMapper = new ObjectMapper();
     }
 
@@ -70,27 +70,27 @@ public class OpenAIApiService {
     }
 
     /**
-     * Fetches models from OpenAI-style API with caching and retry logic
+     * Fetches models from OpenWebUI API with caching and retry logic
      * @return ModelsResponse containing the list of models
      */
     public ModelsResponse fetchModels() {
         ProxySettingsState settings = ProxySettingsState.getInstance();
-        String openAIUrl = buildOpenAIUrl(settings.openaiApiUrl);
-        String cacheKey = openAIUrl + "|" + settings.openaiApiKey; // Include API key in cache key
+        String openWebUIUrl = buildOpenWebUIUrl(settings.openaiApiUrl);
+        String cacheKey = openWebUIUrl + "|" + settings.openaiApiKey; // Include API key in cache key
 
         // Check cache first
         CachedResponse cached = modelCache.get(cacheKey);
         if (cached != null && !cached.isExpired()) {
-            LOG.info("Returning cached models response for: " + openAIUrl);
+            LOG.info("Returning cached models response for: " + openWebUIUrl);
             return cached.response;
         }
 
-        LOG.info("Fetching models from OpenAI-style API at: " + openAIUrl);
+        LOG.info("Fetching models from OpenWebUI at: " + openWebUIUrl);
 
         // Try with retry logic
         for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             try {
-                ModelsResponse response = fetchModelsWithRetry(openAIUrl, settings, attempt);
+                ModelsResponse response = fetchModelsWithRetry(openWebUIUrl, settings, attempt);
 
                 // Cache successful response
                 modelCache.put(cacheKey, new CachedResponse(response));
@@ -98,10 +98,10 @@ public class OpenAIApiService {
                 return response;
 
             } catch (Exception e) {
-                LOG.warn("Attempt " + attempt + " failed to fetch models from OpenAI-style API: " + e.getMessage());
+                LOG.warn("Attempt " + attempt + " failed to fetch models from OpenWebUI: " + e.getMessage());
 
                 if (attempt == MAX_RETRIES) {
-                    LOG.error("All retry attempts failed for OpenAI-style API", e);
+                    LOG.error("All retry attempts failed for OpenWebUI API", e);
                     return createFallbackResponse();
                 }
 
@@ -122,8 +122,8 @@ public class OpenAIApiService {
     /**
      * Internal method to fetch models with improved connection handling
      */
-    private ModelsResponse fetchModelsWithRetry(String openAIUrl, ProxySettingsState settings, int attempt) throws Exception {
-        URL url = new URL(openAIUrl + "/v1/models");
+    private ModelsResponse fetchModelsWithRetry(String openWebUIUrl, ProxySettingsState settings, int attempt) throws Exception {
+        URL url = new URL(openWebUIUrl + "/api/models");
         HttpURLConnection connection = null;
 
         try {
@@ -156,13 +156,13 @@ public class OpenAIApiService {
                 }
 
                 String responseBody = response.toString();
-                LOG.info("Received response from OpenAI-style API (attempt " + attempt + "): " + responseBody.length() + " characters");
+                LOG.info("Received response from OpenWebUI (attempt " + attempt + "): " + responseBody.length() + " characters");
 
                 // Parse the response and convert to our format
                 return parseAndConvertResponse(responseBody);
 
             } else {
-                String errorMessage = "OpenAI-style API returned status code: " + responseCode;
+                String errorMessage = "OpenWebUI API returned status code: " + responseCode;
                 if (responseCode >= 500) {
                     // Server errors are retryable
                     throw new IOException(errorMessage);
@@ -185,32 +185,32 @@ public class OpenAIApiService {
     }
 
     /**
-     * Builds the OpenAI URL from the configured API URL
+     * Builds the OpenWebUI URL from the configured API URL
      */
-    private String buildOpenAIUrl(String apiUrl) {
-        // Remove trailing /v1 if present and any trailing slashes
-        String baseUrl = apiUrl.replaceAll("/v1/?$", "").replaceAll("/$", "");
+    private String buildOpenWebUIUrl(String apiUrl) {
+        // Remove trailing /api/v1 if present and any trailing slashes
+        String baseUrl = apiUrl.replaceAll("/api/v1/?$", "").replaceAll("/$", "");
         return baseUrl;
     }
 
     /**
-     * Parses the OpenAI response and converts it to our expected format
+     * Parses the OpenWebUI response and converts it to our expected format
      */
     private ModelsResponse parseAndConvertResponse(String responseBody) {
         try {
-            // Try to parse as OpenAI format
-            ModelsResponse openAIResponse = objectMapper.readValue(responseBody, ModelsResponse.class);
+            // Try to parse as OpenWebUI format (similar to OpenAI format)
+            ModelsResponse openWebUIResponse = objectMapper.readValue(responseBody, ModelsResponse.class);
 
             // Ensure the object field is set to "List"
-            openAIResponse.setObject("List");
+            openWebUIResponse.setObject("List");
 
             // If successful, convert the models to match our expected format
-            if (openAIResponse.getData() != null) {
-                for (LMStudioModel model : openAIResponse.getData()) {
+            if (openWebUIResponse.getData() != null) {
+                for (OpenAIModel model : openWebUIResponse.getData()) { // Changed from LMStudioModel
                     // Ensure all required fields are set with defaults if missing
                     if (model.getObject() == null) model.setObject("model");
                     if (model.getType() == null) model.setType("llm");
-                    if (model.getPublisher() == null) model.setPublisher("openai");
+                    if (model.getPublisher() == null) model.setPublisher("openwebui");
                     if (model.getArch() == null) model.setArch("transformer");
                     if (model.getCompatibilityType() == null) model.setCompatibilityType("openai");
                     if (model.getQuantization() == null) model.setQuantization("unknown");
@@ -219,24 +219,24 @@ public class OpenAIApiService {
                 }
             }
             
-            return openAIResponse;
+            return openWebUIResponse;
             
         } catch (Exception e) {
-            LOG.warn("Failed to parse OpenAI response, creating fallback: " + e.getMessage());
+            LOG.warn("Failed to parse OpenWebUI response, creating fallback: " + e.getMessage());
             return createFallbackResponse();
         }
     }
 
     /**
-     * Creates a fallback response when OpenAI API is not available
+     * Creates a fallback response when OpenWebUI is not available
      */
     private ModelsResponse createFallbackResponse() {
         ProxySettingsState settings = ProxySettingsState.getInstance();
         
-        LMStudioModel fallbackModel = new LMStudioModel(
+        OpenAIModel fallbackModel = new OpenAIModel( // Changed from LMStudioModel
             settings.defaultModel,
             "llm",
-            "openai-proxy",
+            "openwebui-proxy",
             "transformer", 
             "openai",
             "fp16",
@@ -244,7 +244,7 @@ public class OpenAIApiService {
             4096
         );
         
-        List<LMStudioModel> models = Arrays.asList(fallbackModel);
+        List<OpenAIModel> models = Arrays.asList(fallbackModel); // Changed from LMStudioModel
         return new ModelsResponse("List", models);
     }
 }

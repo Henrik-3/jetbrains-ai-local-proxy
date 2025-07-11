@@ -1,18 +1,18 @@
-package com.hdev.lmstudioproxy.model;
+package com.hdev.ollamaproxy.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Represents a choice in LM Studio chat completion responses
+ * Represents a choice in OpenAI-style chat completion responses
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class LMStudioChoice {
+public class OpenAIChoice {
     @JsonProperty("index")
     private Integer index;
 
     @JsonProperty("delta")
-    private LMStudioDelta delta;
+    private OpenAIDelta delta;
 
     @JsonProperty("logprobs")
     private Object logprobs;
@@ -21,10 +21,10 @@ public class LMStudioChoice {
     private String finishReason;
 
     // Default constructor
-    public LMStudioChoice() {}
+    public OpenAIChoice() {}
 
     // Constructor
-    public LMStudioChoice(Integer index, LMStudioDelta delta, Object logprobs, String finishReason) {
+    public OpenAIChoice(Integer index, OpenAIDelta delta, Object logprobs, String finishReason) {
         this.index = index;
         this.delta = delta;
         this.logprobs = logprobs;
@@ -35,8 +35,8 @@ public class LMStudioChoice {
     public Integer getIndex() { return index; }
     public void setIndex(Integer index) { this.index = index; }
 
-    public LMStudioDelta getDelta() { return delta; }
-    public void setDelta(LMStudioDelta delta) { this.delta = delta; }
+    public OpenAIDelta getDelta() { return delta; }
+    public void setDelta(OpenAIDelta delta) { this.delta = delta; }
 
     public Object getLogprobs() { return logprobs; }
     public void setLogprobs(Object logprobs) { this.logprobs = logprobs; }

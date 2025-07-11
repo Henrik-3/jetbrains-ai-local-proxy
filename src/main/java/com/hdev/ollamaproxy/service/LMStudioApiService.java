@@ -1,9 +1,9 @@
-package com.hdev.lmstudioproxy.service;
+package com.hdev.ollamaproxy.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hdev.lmstudioproxy.model.LMStudioModel;
-import com.hdev.lmstudioproxy.model.ModelsResponse;
-import com.hdev.lmstudioproxy.settings.ProxySettingsState;
+import com.hdev.ollamaproxy.model.OpenAIModel; // Changed from LMStudioModel
+import com.hdev.ollamaproxy.model.ModelsResponse;
+import com.hdev.ollamaproxy.settings.ProxySettingsState;
 import com.intellij.openapi.diagnostic.Logger;
 
 import java.io.BufferedReader;
@@ -202,7 +202,7 @@ public class LMStudioApiService {
 
             // If successful, convert the models to match our expected format
             if (lmStudioResponse.getData() != null) {
-                for (LMStudioModel model : lmStudioResponse.getData()) {
+                for (OpenAIModel model : lmStudioResponse.getData()) { // Changed from LMStudioModel
                     // Ensure all required fields are set with defaults if missing
                     if (model.getObject() == null) model.setObject("model");
                     if (model.getType() == null) model.setType("llm");
@@ -229,7 +229,7 @@ public class LMStudioApiService {
     private ModelsResponse createFallbackResponse() {
         ProxySettingsState settings = ProxySettingsState.getInstance();
         
-        LMStudioModel fallbackModel = new LMStudioModel(
+        OpenAIModel fallbackModel = new OpenAIModel( // Changed from LMStudioModel
             settings.defaultModel,
             "llm",
             "openai-proxy",
@@ -240,7 +240,7 @@ public class LMStudioApiService {
             4096
         );
         
-        List<LMStudioModel> models = Arrays.asList(fallbackModel);
+        List<OpenAIModel> models = Arrays.asList(fallbackModel); // Changed from LMStudioModel
         return new ModelsResponse("List", models);
     }
 }

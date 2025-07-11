@@ -1,13 +1,20 @@
-package com.hdev.lmstudioproxy.util;
+package com.hdev.ollamaproxy.util;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.hdev.lmstudioproxy.model.LMStudioChatResponse;
-import com.hdev.lmstudioproxy.model.LMStudioChoice;
-import com.hdev.lmstudioproxy.model.LMStudioDelta;
+import com.hdev.ollamaproxy.model.OpenAIChatResponse;
+import com.hdev.ollamaproxy.model.OpenAIChoice;
+import com.hdev.ollamaproxy.model.OpenAIDelta;
+import com.hdev.ollamaproxy.model.OpenAIModel;
+import com.hdev.ollamaproxy.model.ModelsResponse;
+import com.hdev.ollamaproxy.model.OllamaModelTag;
+import com.hdev.ollamaproxy.model.OllamaTagsResponse;
 import com.intellij.openapi.diagnostic.Logger;
 
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -20,7 +27,9 @@ public class ResponseTransformer {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * Transforms an OpenAI chat completion response to LM Studio format
+     * Transforms an OpenAI chat completion response if necessary (e.g., for streaming).
+     * Currently, it mainly handles the structure for streaming vs non-streaming.
+     * The output format aims to be compatible with what JetBrains AI expects from an Ollama-like endpoint.
      */
     public static String transformChatCompletionResponse(String openAIResponse) {
         try {
@@ -42,33 +51,33 @@ public class ResponseTransformer {
     }
 
     /**
-     * Transforms a regular (non-streaming) OpenAI response to LM Studio format
+     * Transforms a regular (non-streaming) OpenAI response to a format expected by the client.
      */
     private static String transformRegularResponse(JsonNode openAINode) throws Exception {
-        LMStudioChatResponse lmResponse = new LMStudioChatResponse();
+        OpenAIChatResponse lmResponse = new OpenAIChatResponse(); // Renamed
         
         // Set basic fields
         lmResponse.setId(generateChatId());
-        lmResponse.setObject("chat.completion.chunk");
+        lmResponse.setObject("chat.completion.chunk"); // This object type might need to change for Ollama
         lmResponse.setCreated(System.currentTimeMillis() / 1000);
         lmResponse.setModel(openAINode.has("model") ? openAINode.get("model").asText() : "unknown");
-        lmResponse.setSystemFingerprint(lmResponse.getModel());
+        lmResponse.setSystemFingerprint(lmResponse.getModel()); // Ollama might not use/expect this
         
         // Transform choices
-        List<LMStudioChoice> lmChoices = new ArrayList<>();
+        List<OpenAIChoice> lmChoices = new ArrayList<>(); // Renamed
         if (openAINode.has("choices")) {
             JsonNode choicesNode = openAINode.get("choices");
             for (int i = 0; i < choicesNode.size(); i++) {
                 JsonNode choiceNode = choicesNode.get(i);
-                LMStudioChoice lmChoice = new LMStudioChoice();
+                OpenAIChoice lmChoice = new OpenAIChoice(); // Renamed
                 
                 lmChoice.setIndex(i);
-                lmChoice.setLogprobs(null);
+                lmChoice.setLogprobs(null); // Ollama might not use/expect this
                 lmChoice.setFinishReason(choiceNode.has("finish_reason") ? 
                     choiceNode.get("finish_reason").asText() : "stop");
                 
                 // Create delta from message content
-                LMStudioDelta delta = new LMStudioDelta();
+                OpenAIDelta delta = new OpenAIDelta(); // Renamed
                 if (choiceNode.has("message")) {
                     JsonNode messageNode = choiceNode.get("message");
                     if (messageNode.has("content")) {
@@ -78,7 +87,7 @@ public class ResponseTransformer {
                         delta.setRole(messageNode.get("role").asText());
                     }
                 } else {
-                    delta = new LMStudioDelta(); // Empty delta for finish
+                    delta = new OpenAIDelta(); // Renamed // Empty delta for finish
                 }
                 
                 lmChoice.setDelta(delta);
@@ -92,7 +101,7 @@ public class ResponseTransformer {
     }
 
     /**
-     * Transforms streaming OpenAI response to LM Studio format
+     * Transforms a streaming OpenAI response line by line to a format expected by the client.
      */
     private static String transformStreamingResponse(String openAIResponse) throws Exception {
         StringBuilder result = new StringBuilder();
@@ -124,7 +133,7 @@ public class ResponseTransformer {
     }
 
     /**
-     * Transforms a single streaming chunk to LM Studio format
+     * Transforms a single streaming chunk to a format expected by the client.
      */
     private static String transformStreamingChunk(JsonNode openAIChunk) throws Exception {
         ObjectNode lmChunk = objectMapper.createObjectNode();
@@ -145,9 +154,36 @@ public class ResponseTransformer {
     }
 
     /**
-     * Generates a unique chat completion ID in LM Studio format
+     * Generates a unique chat completion ID, similar to OpenAI's format.
      */
     private static String generateChatId() {
         return "chatcmpl-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
+    }
+
+    /**
+     * Transforms an OpenAI /v1/models style response (ModelsResponse) to Ollama /api/tags style response (OllamaTagsResponse)
+     */
+    public static OllamaTagsResponse transformToOllamaTagsResponse(ModelsResponse openAIModelsResponse) {
+        if (openAIModelsResponse == null || openAIModelsResponse.getData() == null) {
+            return new OllamaTagsResponse(new ArrayList<>());
+        }
+
+        List<OllamaModelTag> ollamaModelTags = new ArrayList<>();
+        for (OpenAIModel openAIModel : openAIModelsResponse.getData()) {
+            String name = openAIModel.getId(); // Typically, OpenAI model ID is the name Ollama expects.
+            // Ollama's modified_at is ISO 8601. OpenAI doesn't provide this directly.
+            // We'll use the current time as a placeholder or a fixed old date.
+            // A more sophisticated approach might involve trying to get this from headers if available,
+            // or storing it if the model was downloaded locally by this proxy (not current scope).
+            String modifiedAt = DateTimeFormatter.ISO_INSTANT.format(Instant.now().atZone(ZoneOffset.UTC));
+            long size = 0; // OpenAI API doesn't provide model size. Placeholder.
+
+            // Some OpenAI compatible APIs might provide 'created' timestamp for model.
+            // If openAIModel has a getCreated() long timestamp, we could use it.
+            // For now, using current time.
+
+            ollamaModelTags.add(new OllamaModelTag(name, modifiedAt, size, null)); // digest is also not typically available
+        }
+        return new OllamaTagsResponse(ollamaModelTags);
     }
 }

@@ -1,15 +1,15 @@
-// File: src/main/java/com/example/lmstudioproxy/ProxyProjectComponent.java
-package com.hdev.lmstudioproxy;
+// File: src/main/java/com/hdev/ollamaproxy/OllamaProxyProjectComponent.java
+package com.hdev.ollamaproxy;
 
-import com.hdev.lmstudioproxy.server.ProxyServer;
-import com.hdev.lmstudioproxy.settings.ProxySettingsState;
+import com.hdev.ollamaproxy.server.ProxyServer;
+import com.hdev.ollamaproxy.settings.ProxySettingsState;
 import com.intellij.openapi.components.ProjectComponent;
 import com.intellij.openapi.project.Project;
 
-public class ProxyProjectComponent implements ProjectComponent {
+public class OllamaProxyProjectComponent implements ProjectComponent { // Renamed class
     private final Project project;
 
-    public ProxyProjectComponent(Project project) {
+    public OllamaProxyProjectComponent(Project project) { // Renamed constructor
         this.project = project;
     }
 

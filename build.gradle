@@ -4,7 +4,7 @@ plugins {
     id 'org.jetbrains.intellij' version '1.17.3'
 }
 
-group 'com.hdev'
+group 'com.hdev.ollamaproxy'
 version '1.0.1'
 
 repositories {
@@ -46,11 +46,7 @@ tasks {
 
     patchPluginXml {
         changeNotes = """
-            Initial release:
-            - Proxy server that converts LM Studio API requests to OpenAI format
-            - Configurable target OpenAI API URL and API key
-            - Auto-start functionality
-            - Manual start/stop controls
+            Initial release as Ollama Proxy. Allows JetBrains AI to connect to OpenAI-compatible backends via an Ollama interface. Supports OpenWebUI URL adjustments.
             """
     }
 }

@@ -1,13 +1,14 @@
-// File: src/main/java/com/example/lmstudioproxy/server/ProxyServer.java
-package com.hdev.lmstudioproxy.server;
+// File: src/main/java/com/hdev/ollamaproxy/server/ProxyServer.java
+package com.hdev.ollamaproxy.server;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.hdev.lmstudioproxy.model.ModelsResponse;
-import com.hdev.lmstudioproxy.service.ApiServiceFactory;
-import com.hdev.lmstudioproxy.settings.ProxySettingsState;
-import com.hdev.lmstudioproxy.util.ResponseTransformer;
+import com.hdev.ollamaproxy.model.ModelsResponse;
+import com.hdev.ollamaproxy.model.OllamaTagsResponse; // Added import
+import com.hdev.ollamaproxy.service.ApiServiceFactory;
+import com.hdev.ollamaproxy.settings.ProxySettingsState;
+import com.hdev.ollamaproxy.util.ResponseTransformer;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
@@ -38,25 +39,59 @@ public final class ProxyServer {
             ProxySettingsState settings = ProxySettingsState.getInstance();
             server = HttpServer.create(new InetSocketAddress(settings.proxyPort), 0);
 
-            // Set up endpoints - support multiple endpoint patterns
-            server.createContext("/api/v0/models", new ModelsHandler());
-            server.createContext("/api/v0/chat/completions", new ChatCompletionsHandler());
-            server.createContext("/api/v0/completions", new CompletionsHandler());
-            server.createContext("/api/v0/embeddings", new EmbeddingsHandler());
-
-            // Also support v1 endpoints for better compatibility
-            server.createContext("/v1/models", new ModelsHandler());
+            // Standard OpenAI/Ollama v1 endpoints
+            server.createContext("/v1/models", new ModelsHandler()); // Will be used by our /api/tags handler indirectly
             server.createContext("/v1/chat/completions", new ChatCompletionsHandler());
             server.createContext("/v1/completions", new CompletionsHandler());
             server.createContext("/v1/embeddings", new EmbeddingsHandler());
+
+            // Ollama specific model listing endpoint
+            server.createContext("/api/tags", new OllamaTagsHandler());
 
             server.setExecutor(Executors.newFixedThreadPool(10));
             server.start();
             isRunning = true;
 
-            LOG.info("LM Studio Proxy server started on port " + settings.proxyPort);
+            LOG.info("Ollama Proxy server started on port " + settings.proxyPort);
         } catch (Exception e) {
             LOG.error("Failed to start proxy server", e);
+        }
+    }
+
+    private static class OllamaTagsHandler implements HttpHandler {
+        private final ObjectMapper objectMapper;
+
+        public OllamaTagsHandler() {
+            this.objectMapper = new ObjectMapper();
+        }
+
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"GET".equals(exchange.getRequestMethod())) {
+                sendErrorResponse(exchange, 405, "Method not allowed. Expected GET request.");
+                return;
+            }
+
+            try {
+                // Fetch models using the ApiServiceFactory (which gets /v1/models from backend)
+                ApiServiceFactory.ApiServiceInterface apiService = ApiServiceFactory.getApiService();
+                ModelsResponse openAIModelsResponse = apiService.fetchModels();
+
+                // Transform OpenAIModelsResponse to OllamaTagsResponse
+                OllamaTagsResponse ollamaResponse = ResponseTransformer.transformToOllamaTagsResponse(openAIModelsResponse);
+                String jsonResponse = objectMapper.writeValueAsString(ollamaResponse);
+
+                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+                byte[] responseBytes = jsonResponse.getBytes("UTF-8");
+                exchange.sendResponseHeaders(200, responseBytes.length);
+                try (OutputStream os = exchange.getResponseBody()) {
+                    os.write(responseBytes);
+                    os.flush();
+                }
+            } catch (Exception e) {
+                LOG.error("Error handling /api/tags request", e);
+                sendErrorResponse(exchange, 500, "Internal server error: " + e.getMessage());
+            }
         }
     }
 
@@ -65,7 +100,7 @@ public final class ProxyServer {
 
         server.stop(0);
         isRunning = false;
-        LOG.info("LM Studio Proxy server stopped");
+        LOG.info("Ollama Proxy server stopped"); // Changed this line
     }
 
     public boolean isRunning() {

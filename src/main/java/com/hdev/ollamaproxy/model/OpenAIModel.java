@@ -1,14 +1,14 @@
-package com.hdev.lmstudioproxy.model;
+package com.hdev.ollamaproxy.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Represents a model from LM Studio API response
- * Also compatible with OpenAI and OpenWebUI API formats
+ * Represents a model from an OpenAI-style API response
+ * Also compatible with OpenWebUI API formats
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class LMStudioModel {
+public class OpenAIModel {
     @JsonProperty("id")
     private String id;
     
@@ -37,10 +37,10 @@ public class LMStudioModel {
     private Integer maxContextLength;
 
     // Default constructor
-    public LMStudioModel() {}
+    public OpenAIModel() {}
 
     // Constructor for creating mock/fallback models
-    public LMStudioModel(String id, String type, String publisher, String arch,
+    public OpenAIModel(String id, String type, String publisher, String arch,
                         String compatibilityType, String quantization, String state,
                         Integer maxContextLength) {
         this.id = id;

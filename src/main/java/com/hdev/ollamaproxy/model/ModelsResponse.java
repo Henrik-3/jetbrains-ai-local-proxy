@@ -1,17 +1,17 @@
-package com.hdev.lmstudioproxy.model;
+package com.hdev.ollamaproxy.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 /**
- * Represents the response structure for LM Studio models API
+ * Represents the response structure for OpenAI-style models API
  */
 public class ModelsResponse {
     @JsonProperty("object")
     private String object;
     
     @JsonProperty("data")
-    private List<LMStudioModel> data;
+    private List<OpenAIModel> data;
 
     // Default constructor
     public ModelsResponse() {
@@ -19,7 +19,7 @@ public class ModelsResponse {
     }
 
     // Constructor
-    public ModelsResponse(String object, List<LMStudioModel> data) {
+    public ModelsResponse(String object, List<OpenAIModel> data) {
         this.object = "list";
         this.data = data;
     }
@@ -28,6 +28,6 @@ public class ModelsResponse {
     public String getObject() { return object; }
     public void setObject(String object) { this.object = object; }
 
-    public List<LMStudioModel> getData() { return data; }
-    public void setData(List<LMStudioModel> data) { this.data = data; }
+    public List<OpenAIModel> getData() { return data; }
+    public void setData(List<OpenAIModel> data) { this.data = data; }
 }

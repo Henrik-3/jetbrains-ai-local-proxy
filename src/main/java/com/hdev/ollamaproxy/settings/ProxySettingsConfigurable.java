@@ -1,7 +1,7 @@
-// File: src/main/java/com/example/lmstudioproxy/settings/ProxySettingsConfigurable.java
-package com.hdev.lmstudioproxy.settings;
+// File: src/main/java/com/hdev/ollamaproxy/settings/ProxySettingsConfigurable.java
+package com.hdev.ollamaproxy.settings;
 
-import com.hdev.lmstudioproxy.model.ApiMode;
+import com.hdev.ollamaproxy.model.ApiMode;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.util.NlsContexts;
 import org.jetbrains.annotations.Nls;
@@ -21,7 +21,7 @@ public class ProxySettingsConfigurable implements Configurable {
 
     @Override
     public @Nls(capitalization = Nls.Capitalization.Title) String getDisplayName() {
-        return "LM Studio Proxy";
+        return "Ollama Proxy";
     }
 
     @Override
@@ -33,28 +33,28 @@ public class ProxySettingsConfigurable implements Configurable {
 
         // API Mode
         gbc.gridx = 0; gbc.gridy = 0;
-        mainPanel.add(new JLabel("API Mode:"), gbc);
+        mainPanel.add(new JLabel("Target Backend API Type:"), gbc);
         gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0;
         apiModeComboBox = new JComboBox<>(ApiMode.values());
         mainPanel.add(apiModeComboBox, gbc);
 
         // OpenAI API URL
         gbc.gridx = 0; gbc.gridy = 1; gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0;
-        mainPanel.add(new JLabel("API URL:"), gbc);
+        mainPanel.add(new JLabel("Backend Service URL:"), gbc);
         gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0;
         openaiApiUrlField = new JTextField(30);
         mainPanel.add(openaiApiUrlField, gbc);
 
         // API Key
         gbc.gridx = 0; gbc.gridy = 2; gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0;
-        mainPanel.add(new JLabel("API Key:"), gbc);
+        mainPanel.add(new JLabel("Backend API Key:"), gbc);
         gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0;
         openaiApiKeyField = new JTextField(30);
         mainPanel.add(openaiApiKeyField, gbc);
 
         // Proxy Port
         gbc.gridx = 0; gbc.gridy = 3; gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0;
-        mainPanel.add(new JLabel("Proxy Port:"), gbc);
+        mainPanel.add(new JLabel("Ollama Proxy Port:"), gbc);
         gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0;
         proxyPortField = new JTextField(10);
         mainPanel.add(proxyPortField, gbc);
@@ -68,12 +68,12 @@ public class ProxySettingsConfigurable implements Configurable {
 
         // Auto Start
         gbc.gridx = 0; gbc.gridy = 5; gbc.gridwidth = 2;
-        autoStartCheckbox = new JCheckBox("Auto-start proxy server");
+        autoStartCheckbox = new JCheckBox("Auto-start Ollama Proxy server on IDE launch");
         mainPanel.add(autoStartCheckbox, gbc);
 
         // Info label
         gbc.gridx = 0; gbc.gridy = 6; gbc.gridwidth = 2;
-        JLabel infoLabel = new JLabel("<html><i>Configure your proxy to forward API requests to different compatible endpoints</i></html>");
+        JLabel infoLabel = new JLabel("<html><i>Configure the Ollama Proxy to connect to your preferred backend OpenAI-compatible service (e.g., OpenWebUI, OpenRouter, local Ollama instance).</i></html>");
         mainPanel.add(infoLabel, gbc);
 
         return mainPanel;

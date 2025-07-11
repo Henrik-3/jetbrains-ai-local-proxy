@@ -1,4 +1,4 @@
-package com.hdev.lmstudioproxy.service;
+package com.hdev.ollamaproxy.service;
 
 import com.intellij.openapi.diagnostic.Logger;
 
