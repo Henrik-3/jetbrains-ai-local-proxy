@@ -101,7 +101,7 @@ public class OllamaWebUIClient implements ProviderClient {
         LOG.info("Request: " + request.toString());
         Request apiRequest = new Request.Builder()
                 .url(baseUrl + "api/chat/completions")
-                .header("Accept", "text/event-stream")
+                .header("Accept", "application/x-ndjson")
                 .post(body)
                 .build();
 

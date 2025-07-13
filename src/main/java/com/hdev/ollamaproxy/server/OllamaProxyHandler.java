@@ -111,7 +111,7 @@ public class OllamaProxyHandler {
     }
 
     private void handleChatStream(Context ctx, ObjectNode request) throws Exception {
-        ctx.header("Content-Type", "text/event-stream");
+        ctx.header("Content-Type", "application/x-ndjson");
         // It's good practice to get the output stream once
         ctx.res().setBufferSize(0);
         var outputStream = ctx.res().getOutputStream();
@@ -142,8 +142,8 @@ public class OllamaProxyHandler {
                     ollamaChunk.put("done", false);
 
                     // Write the chunk. This will throw an IOException if the client has disconnected.
-                    String sseData = "data: " + ollamaChunk.toString() + "\n\n";
-                    outputStream.write(sseData.getBytes(StandardCharsets.UTF_8));
+                    String ndjsonLine = ollamaChunk.toString() + "\n";
+                    outputStream.write(ndjsonLine.getBytes(StandardCharsets.UTF_8));
                     outputStream.flush();
 
                 } catch (java.io.IOException e) {
@@ -164,8 +164,8 @@ public class OllamaProxyHandler {
             finalChunk.put("done", true);
             finalChunk.put("finish_reason", "stop");
 
-            String sseData = "data: " + finalChunk.toString() + "\n\n";
-            outputStream.write(sseData.getBytes(StandardCharsets.UTF_8));
+            String finalNdjsonLine = finalChunk.toString() + "\n";
+            outputStream.write(finalNdjsonLine.getBytes(StandardCharsets.UTF_8));
             outputStream.flush();
 
         } catch (ClientDisconnectedException e) {
