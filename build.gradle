@@ -12,16 +12,34 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.15.2'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.15.2'
-}
+    // We expect the IntelliJ Platform to provide these at runtime.
+    // Use 'compileOnly' to compile against them but not bundle them.
+    compileOnly 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
+    // The class causing the error is KotlinModule, so we need to add it here as well.
+    compileOnly 'com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2'
+
+    // For other dependencies that also use Jackson, we keep them as 'implementation'
+    // but explicitly exclude their transitive Jackson dependency to avoid conflicts.
+    implementation('com.theokanning.openai-gpt3-java:service:0.18.2') {
+        exclude group: 'com.fasterxml.jackson.core'
+    }
+    implementation('io.javalin:javalin:6.7.0') {
+        exclude group: 'com.fasterxml.jackson.core'
+    }
+    implementation('com.squareup.retrofit2:converter-jackson:3.0.0') { // Note: 3.0.0 is an unusual version for this library, but keeping as-is from your file.
+        exclude group: 'com.fasterxml.jackson.core'
+    }
+
+    implementation 'org.slf4j:slf4j-simple:2.0.12'}
 
 // Configure Gradle IntelliJ Plugin
 intellij {
     version = '2023.1.2'
     type = 'IC' // IntelliJ IDEA Community Edition
     plugins = ['java']
+
+    // Enable GUI Designer form compilation
+    instrumentCode = true
 }
 
 patchPluginXml {
@@ -42,7 +60,6 @@ publishPlugin {
 tasks {
     sourceCompatibility = "17"
     targetCompatibility = "17"
-
 
     patchPluginXml {
         changeNotes = """

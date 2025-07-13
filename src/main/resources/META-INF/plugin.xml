@@ -1,46 +1,57 @@
-<!-- File: src/main/resources/META-INF/plugin.xml -->
 <idea-plugin>
-    <id>com.hdev.ollamaproxy</id>
-    <name>Ollama Proxy</name>
-    <version>1.0.0</version>
-    <vendor email="support@example.com" url="https://example.com">Example Vendor</vendor>
+<id>com.hdev.ollamaproxy</id>
+<name>Ollama OpenAI Proxy</name>
+<vendor>Henrik Mertens</vendor>
 
-    <description><![CDATA[
-    A proxy plugin that allows JetBrains AI to connect to various OpenAI-compatible services (like OpenWebUI, OpenRouter) by presenting an Ollama-compatible interface.
+<description><![CDATA[
+    Provides a local proxy server to adapt OpenAI-compatible APIs (like OpenRouter) to the Ollama API format.<br>
+    This allows tools like Open WebUI to connect to any OpenAI-compatible service.<br>
+    Features:
+    <ul>
+        <li>Start/Stop proxy server from the IDE.</li>
+        <li>Auto-start server on project open.</li>
+        <li>Configurable API Key, Endpoint URL, and Port.</li>
+        <li>Manage a filter list for available models.</li>
+        <li>Supports streaming and non-streaming chat.</li>
+    </ul>
     ]]></description>
 
-    <depends>com.intellij.modules.platform</depends>
-    <depends>com.intellij.modules.java</depends>
+<!-- please see https://plugins.jetbrains.com/docs/intellij/build-number-ranges.html for description -->
+<depends>com.intellij.modules.platform</depends>
 
-    <extensions defaultExtensionNs="com.intellij">
-        <applicationConfigurable
-                parentId="tools"
-                instance="com.hdev.ollamaproxy.settings.ProxySettingsConfigurable"
-                id="com.hdev.ollamaproxy.settings.ProxySettingsConfigurable"
-                displayName="Ollama Proxy"/>
+<extensions defaultExtensionNs="com.intellij">
+    <!-- Register the Settings/Preferences panel -->
+    <applicationConfigurable
+            parentId="tools"
+            instance="com.hdev.ollamaproxy.config.AppSettingsConfigurable"
+            id="com.hdev.ollamaproxy.settings"
+            displayName="Ollama OpenAI Proxy"/>
 
-        <applicationService
-                serviceInterface="com.hdev.ollamaproxy.settings.ProxySettingsState"
-                serviceImplementation="com.hdev.ollamaproxy.settings.ProxySettingsState"/>
+    <!-- Register the service to store settings -->
+    <applicationService
+            serviceImplementation="com.hdev.ollamaproxy.config.AppSettingsState"/>
 
-        <applicationService
-                serviceInterface="com.hdev.ollamaproxy.server.ProxyServer"
-                serviceImplementation="com.hdev.ollamaproxy.server.ProxyServer"/>
-    </extensions>
+    <!-- Register the startup activity for the auto-start feature -->
+    <postStartupActivity
+            implementation="com.hdev.ollamaproxy.service.PluginStartupActivity"/>
+</extensions>
 
-    <actions>
-        <action id="StartOllamaProxyServer" class="com.hdev.ollamaproxy.actions.StartServerAction" text="Start Ollama Proxy">
-            <add-to-group group-id="ToolsMenu" anchor="last"/>
-        </action>
-        <action id="StopOllamaProxyServer" class="com.hdev.ollamaproxy.actions.StopServerAction" text="Stop Ollama Proxy">
-            <add-to-group group-id="ToolsMenu" anchor="last"/>
-        </action>
-    </actions>
+<actions>
+    <group id="OllamaProxy.Actions" text="Ollama Proxy" popup="true">
+        <add-to-group group-id="ToolsMenu" anchor="last"/>
+        <!-- Action to start the proxy server -->
+        <action id="OllamaProxy.Start"
+                class="com.hdev.ollamaproxy.actions.StartProxyAction"
+                text="Start Proxy Server"
+                description="Starts the Ollama proxy server"
+                icon="AllIcons.Actions.Execute"/>
 
-    <project-components>
-        <component>
-            <implementation-class>com.hdev.ollamaproxy.OllamaProxyProjectComponent</implementation-class>
-        </component>
-    </project-components>
-
+        <!-- Action to stop the proxy server -->
+        <action id="OllamaProxy.Stop"
+                class="com.hdev.ollamaproxy.actions.StopProxyAction"
+                text="Stop Proxy Server"
+                description="Stops the Ollama proxy server"
+                icon="AllIcons.Actions.Suspend"/>
+    </group>
+</actions>
 </idea-plugin>
