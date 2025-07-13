@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="com.hdev.ollamaproxy.config.AppSettingsComponent">
+  <grid id="27dc6" binding="mainPanel" layout-manager="GridLayoutManager" row-count="7" column-count="2" same-size-horizontally="false" same-size-vertically="false" hgap="5" vgap="5">
+    <margin top="10" left="10" bottom="10" right="10"/>
+    <constraints>
+      <xy x="20" y="20" width="675" height="400"/>
+    </constraints>
+    <properties/>
+    <border type="none"/>
+    <children>
+            <component id="a1b2c" class="javax.swing.JLabel">
+              <constraints>
+                <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+              </constraints>
+              <properties>
+                <text value="Service Type:"/>
+              </properties>
+            </component>
+<component id="d3e4f" class="javax.swing.JComboBox" binding="serviceTypeComboBox">
+        <constraints>
+          <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="2" anchor="8" fill="1" indent="0" use-parent-layout="false"/>
+        </constraints>
+        <properties/>
+      </component>
+      <!-- API Key Row -->
+      <component id="66d7c" class="javax.swing.JLabel">
+        <constraints>
+          <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+        </constraints>
+        <properties>
+          <text value="OpenAI/OpenRouter API Key:"/>
+          <toolTipText value="Your API Key for the target service."/>
+        </properties>
+      </component>
+      <component id="9108" class="javax.swing.JPasswordField" binding="apiKeyField">
+        <constraints>
+          <grid row="1" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+            <preferred-size width="300" height="-1"/>
+          </grid>
+        </constraints>
+        <properties/>
+      </component>
+
+      <!-- Base URL Row -->
+      <component id="386e8" class="javax.swing.JLabel">
+        <constraints>
+          <grid row="2" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+        </constraints>
+        <properties>
+          <text value="Target Base URL:"/>
+          <toolTipText value="The base URL of the API (e.g., https://api.openai.com/v1/ or https://openrouter.ai/api/v1/)"/>
+        </properties>
+      </component>
+      <component id="d19d" class="javax.swing.JTextField" binding="baseUrlField">
+        <constraints>
+          <grid row="2" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+            <preferred-size width="300" height="-1"/>
+          </grid>
+        </constraints>
+        <properties/>
+      </component>
+
+      <!-- Port Row -->
+      <component id="c7438" class="javax.swing.JLabel">
+        <constraints>
+          <grid row="3" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+        </constraints>
+        <properties>
+          <text value="Local Proxy Port:"/>
+        </properties>
+      </component>
+      <component id="4b059" class="javax.swing.JSpinner" binding="portSpinner">
+        <constraints>
+          <grid row="3" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="2" anchor="8" fill="0" indent="0" use-parent-layout="false">
+            <preferred-size width="100" height="-1"/>
+          </grid>
+        </constraints>
+        <properties/>
+      </component>
+
+      <!-- Auto-start Checkbox -->
+      <component id="d1774" class="javax.swing.JCheckBox" binding="autoStartCheckbox">
+        <constraints>
+          <grid row="4" column="0" row-span="1" col-span="2" vsize-policy="0" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+        </constraints>
+        <properties>
+          <text value="Auto-start proxy server when IDE starts"/>
+        </properties>
+      </component>
+
+      <!-- Model Filter Label -->
+      <component id="74ac9" class="javax.swing.JLabel">
+        <constraints>
+          <grid row="5" column="0" row-span="1" col-span="2" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+        </constraints>
+        <properties>
+          <text value="Model Filter (one model per line, e.g., 'google/gemini-pro'):"/>
+        </properties>
+      </component>
+
+      <!-- Model Filter Text Area -->
+      <scrollpane id="e2154">
+        <constraints>
+          <grid row="6" column="0" row-span="1" col-span="2" vsize-policy="7" hsize-policy="7" anchor="0" fill="3" indent="0" use-parent-layout="false">
+            <preferred-size width="400" height="150"/>
+          </grid>
+        </constraints>
+        <properties/>
+        <border type="none"/>
+        <children>
+          <component id="f31f9" class="javax.swing.JTextArea" binding="modelFilterArea">
+            <constraints/>
+            <properties>
+              <rows value="5"/>
+              <columns value="30"/>
+            </properties>
+          </component>
+        </children>
+      </scrollpane>
+    </children>
+  </grid>
+</form>
