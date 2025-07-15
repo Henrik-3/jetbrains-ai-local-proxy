@@ -31,6 +31,14 @@ public class AppSettingsState implements PersistentStateComponent<AppSettingsSta
     public boolean autoStartServer = false;
     public String modelFilter = "";
 
+    // Anthropic/Claude Code settings
+    public String anthropicApiKey = "";
+    public String anthropicBaseUrl = "https://openrouter.ai/api/v1";
+    public String anthropicModel = "anthropic/claude-sonnet-4";
+    public String anthropicSmallFastModel = "anthropic/claude-3.5-haiku";
+    public String claudeCodeProxyMode = "openai"; // "openai" or "openwebui"
+    public String openrouterProvider = ""; // Optional provider preference for OpenRouter
+
     @NotNull
     public static AppSettingsState getInstance() {
         return ServiceManager.getService(AppSettingsState.class);
@@ -49,5 +57,13 @@ public class AppSettingsState implements PersistentStateComponent<AppSettingsSta
         this.autoStartServer = state.autoStartServer;
         this.modelFilter = state.modelFilter;
         this.serviceType = state.serviceType;
+
+        // Load Anthropic settings
+        this.anthropicApiKey = state.anthropicApiKey;
+        this.anthropicBaseUrl = state.anthropicBaseUrl;
+        this.anthropicModel = state.anthropicModel;
+        this.anthropicSmallFastModel = state.anthropicSmallFastModel;
+        this.claudeCodeProxyMode = state.claudeCodeProxyMode;
+        this.openrouterProvider = state.openrouterProvider;
     }
 }

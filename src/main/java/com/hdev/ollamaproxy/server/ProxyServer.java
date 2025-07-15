@@ -21,12 +21,15 @@ public class ProxyServer {
 
         AppSettingsState settings = AppSettingsState.getInstance();
         if (settings.openAiApiKey == null || settings.openAiApiKey.trim().isEmpty()) {
-            showNotification("API Key is not set. Please configure it in Settings -> Tools -> Ollama OpenAI Proxy.", NotificationType.ERROR);
+            showNotification("OpenAI API Key is not set. Please configure it in Settings -> Tools -> Ollama OpenAI Proxy.", NotificationType.ERROR);
             return;
         }
 
+        // Note: Anthropic API key is optional - endpoints will handle validation individually
+
         try {
             OllamaProxyHandler handler = new OllamaProxyHandler();
+            AnthropicProxyHandler anthropicHandler = new AnthropicProxyHandler();
             Javalin app = Javalin.create().start(settings.serverPort);
 
             // Register handlers, emulating Ollama/OpenWebUI API
@@ -35,6 +38,11 @@ public class ProxyServer {
             app.get("/api/tags", handler::handleGetModels);
             app.post("/api/show", handler::handleShowModel);
             app.post("/api/chat", handler::handleChat);
+
+            // Register Anthropic/Claude Code endpoints
+            app.post("/v1/messages", anthropicHandler::handleMessages);
+            app.get("/v1/models", anthropicHandler::handleModels);
+            app.get("/health", anthropicHandler::handleHealth);
 
             serverInstance.set(app);
             showNotification("Proxy server started on port " + settings.serverPort, NotificationType.INFORMATION);

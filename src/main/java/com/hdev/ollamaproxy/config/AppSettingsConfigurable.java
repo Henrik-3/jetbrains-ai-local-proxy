@@ -49,7 +49,13 @@ public class AppSettingsConfigurable implements SearchableConfigurable {
                 !mySettingsComponent.getBaseUrl().equals(settings.openAiBaseUrl) ||
                 mySettingsComponent.getPort() != settings.serverPort ||
                 mySettingsComponent.getAutoStart() != settings.autoStartServer ||
-                !mySettingsComponent.getModelFilter().equals(settings.modelFilter);
+                !mySettingsComponent.getModelFilter().equals(settings.modelFilter) ||
+                !mySettingsComponent.getAnthropicApiKey().equals(settings.anthropicApiKey) ||
+                !mySettingsComponent.getAnthropicBaseUrl().equals(settings.anthropicBaseUrl) ||
+                !mySettingsComponent.getAnthropicModel().equals(settings.anthropicModel) ||
+                !mySettingsComponent.getAnthropicSmallFastModel().equals(settings.anthropicSmallFastModel) ||
+                !mySettingsComponent.getClaudeCodeProxyMode().equals(settings.claudeCodeProxyMode) ||
+                !mySettingsComponent.getOpenrouterProvider().equals(settings.openrouterProvider);
     }
 
     @Override
@@ -70,6 +76,14 @@ public class AppSettingsConfigurable implements SearchableConfigurable {
         settings.autoStartServer = mySettingsComponent.getAutoStart();
         settings.modelFilter = mySettingsComponent.getModelFilter();
         settings.serviceType = mySettingsComponent.getServiceType();
+
+        // Save Anthropic settings
+        settings.anthropicApiKey = mySettingsComponent.getAnthropicApiKey();
+        settings.anthropicBaseUrl = mySettingsComponent.getAnthropicBaseUrl();
+        settings.anthropicModel = mySettingsComponent.getAnthropicModel();
+        settings.anthropicSmallFastModel = mySettingsComponent.getAnthropicSmallFastModel();
+        settings.claudeCodeProxyMode = mySettingsComponent.getClaudeCodeProxyMode();
+        settings.openrouterProvider = mySettingsComponent.getOpenrouterProvider();
     }
 
     @Override
@@ -84,6 +98,14 @@ public class AppSettingsConfigurable implements SearchableConfigurable {
         mySettingsComponent.setAutoStart(settings.autoStartServer);
         mySettingsComponent.setModelFilter(settings.modelFilter);
         mySettingsComponent.setServiceType(settings.serviceType);
+
+        // Reset Anthropic settings
+        mySettingsComponent.setAnthropicApiKey(settings.anthropicApiKey);
+        mySettingsComponent.setAnthropicBaseUrl(settings.anthropicBaseUrl);
+        mySettingsComponent.setAnthropicModel(settings.anthropicModel);
+        mySettingsComponent.setAnthropicSmallFastModel(settings.anthropicSmallFastModel);
+        mySettingsComponent.setClaudeCodeProxyMode(settings.claudeCodeProxyMode);
+        mySettingsComponent.setOpenrouterProvider(settings.openrouterProvider);
     }
 
     @Override
