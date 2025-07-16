@@ -68,10 +68,3 @@ $HOME/.claude/settings.json and add the following:
 {
   "apiKeyHelper": "echo <API KEY>"
 }
-
-set ANTHROPIC_BASE_URL=http://127.0.0.1:11434
-set ANTHROPIC_API_KEY=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
-set ANTHROPIC_MODEL=moonshotai/kimi-k2
-set ANTHROPIC_SMALL_FAST_MODEL=mistral/devstral-medium
-set CLAUDE_CODE_PROXY_MODE=openai
-set OPENROUTER_PROVIDER=groq
