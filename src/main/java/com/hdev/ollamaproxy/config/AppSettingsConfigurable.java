@@ -21,7 +21,7 @@ public class AppSettingsConfigurable implements SearchableConfigurable {
     @Nls(capitalization = Nls.Capitalization.Title)
     @Override
     public String getDisplayName() {
-        return "Ollama OpenAI Proxy";
+        return "AI Service Proxy";
     }
 
     @Override
@@ -45,17 +45,15 @@ public class AppSettingsConfigurable implements SearchableConfigurable {
         }
         AppSettingsState settings = AppSettingsState.getInstance();
         return mySettingsComponent.getServiceType() != settings.serviceType ||
-                !mySettingsComponent.getApiKey().equals(settings.openAiApiKey) ||
-                !mySettingsComponent.getBaseUrl().equals(settings.openAiBaseUrl) ||
+                !mySettingsComponent.getApiKey().equals(settings.apiKey) ||
+                !mySettingsComponent.getBaseUrl().equals(settings.baseUrl) ||
                 mySettingsComponent.getPort() != settings.serverPort ||
                 mySettingsComponent.getAutoStart() != settings.autoStartServer ||
                 !mySettingsComponent.getModelFilter().equals(settings.modelFilter) ||
-                !mySettingsComponent.getAnthropicApiKey().equals(settings.anthropicApiKey) ||
-                !mySettingsComponent.getAnthropicBaseUrl().equals(settings.anthropicBaseUrl) ||
-                !mySettingsComponent.getAnthropicModel().equals(settings.anthropicModel) ||
-                !mySettingsComponent.getAnthropicSmallFastModel().equals(settings.anthropicSmallFastModel) ||
-                !mySettingsComponent.getClaudeCodeProxyMode().equals(settings.claudeCodeProxyMode) ||
-                !mySettingsComponent.getOpenrouterProvider().equals(settings.openrouterProvider);
+                !mySettingsComponent.getNormalModel().equals(settings.normalModel) ||
+                !mySettingsComponent.getSmallModel().equals(settings.smallModel) ||
+                !mySettingsComponent.getOpenrouterNormalProvider().equals(settings.openrouterNormalProvider) ||
+                !mySettingsComponent.getOpenrouterSmallProvider().equals(settings.openrouterSmallProvider);
     }
 
     @Override
@@ -70,20 +68,22 @@ public class AppSettingsConfigurable implements SearchableConfigurable {
         }
 
         AppSettingsState settings = AppSettingsState.getInstance();
-        settings.openAiApiKey = mySettingsComponent.getApiKey();
-        settings.openAiBaseUrl = mySettingsComponent.getBaseUrl();
+
+        // Save common settings
+        settings.serviceType = mySettingsComponent.getServiceType();
+        settings.apiKey = mySettingsComponent.getApiKey();
+        settings.baseUrl = mySettingsComponent.getBaseUrl();
         settings.serverPort = mySettingsComponent.getPort();
         settings.autoStartServer = mySettingsComponent.getAutoStart();
         settings.modelFilter = mySettingsComponent.getModelFilter();
-        settings.serviceType = mySettingsComponent.getServiceType();
 
-        // Save Anthropic settings
-        settings.anthropicApiKey = mySettingsComponent.getAnthropicApiKey();
-        settings.anthropicBaseUrl = mySettingsComponent.getAnthropicBaseUrl();
-        settings.anthropicModel = mySettingsComponent.getAnthropicModel();
-        settings.anthropicSmallFastModel = mySettingsComponent.getAnthropicSmallFastModel();
-        settings.claudeCodeProxyMode = mySettingsComponent.getClaudeCodeProxyMode();
-        settings.openrouterProvider = mySettingsComponent.getOpenrouterProvider();
+        // Save general model settings
+        settings.normalModel = mySettingsComponent.getNormalModel();
+        settings.smallModel = mySettingsComponent.getSmallModel();
+
+        // Save OpenRouter provider preferences
+        settings.openrouterNormalProvider = mySettingsComponent.getOpenrouterNormalProvider();
+        settings.openrouterSmallProvider = mySettingsComponent.getOpenrouterSmallProvider();
     }
 
     @Override
@@ -92,20 +92,22 @@ public class AppSettingsConfigurable implements SearchableConfigurable {
             return;
         }
         AppSettingsState settings = AppSettingsState.getInstance();
-        mySettingsComponent.setApiKey(settings.openAiApiKey);
-        mySettingsComponent.setBaseUrl(settings.openAiBaseUrl);
+
+        // Reset common settings
+        mySettingsComponent.setServiceType(settings.serviceType);
+        mySettingsComponent.setApiKey(settings.apiKey);
+        mySettingsComponent.setBaseUrl(settings.baseUrl);
         mySettingsComponent.setPort(settings.serverPort);
         mySettingsComponent.setAutoStart(settings.autoStartServer);
         mySettingsComponent.setModelFilter(settings.modelFilter);
-        mySettingsComponent.setServiceType(settings.serviceType);
 
-        // Reset Anthropic settings
-        mySettingsComponent.setAnthropicApiKey(settings.anthropicApiKey);
-        mySettingsComponent.setAnthropicBaseUrl(settings.anthropicBaseUrl);
-        mySettingsComponent.setAnthropicModel(settings.anthropicModel);
-        mySettingsComponent.setAnthropicSmallFastModel(settings.anthropicSmallFastModel);
-        mySettingsComponent.setClaudeCodeProxyMode(settings.claudeCodeProxyMode);
-        mySettingsComponent.setOpenrouterProvider(settings.openrouterProvider);
+        // Reset general model settings
+        mySettingsComponent.setNormalModel(settings.normalModel);
+        mySettingsComponent.setSmallModel(settings.smallModel);
+
+        // Reset OpenRouter provider preferences
+        mySettingsComponent.setOpenrouterNormalProvider(settings.openrouterNormalProvider);
+        mySettingsComponent.setOpenrouterSmallProvider(settings.openrouterSmallProvider);
     }
 
     @Override

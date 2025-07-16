@@ -12,20 +12,17 @@ public class AppSettingsComponent {
     private JCheckBox autoStartCheckbox;
     private JTextArea modelFilterArea;
 
-    // Anthropic/Claude Code settings UI components
-    private JPasswordField anthropicApiKeyField;
-    private JTextField anthropicBaseUrlField;
-    private JTextField anthropicModelField;
-    private JTextField anthropicSmallFastModelField;
-    private JComboBox<String> claudeCodeProxyModeComboBox;
-    private JTextField openrouterProviderField;
+    // General model settings UI components
+    private JTextField normalModelField;
+    private JTextField smallModelField;
+
+    // OpenRouter specific settings UI components (provider preferences only)
+    private JTextField openrouterNormalProviderField;
+    private JTextField openrouterSmallProviderField;
 
     public AppSettingsComponent() {
         // Populate the dropdown with values from the enum
         serviceTypeComboBox.setModel(new DefaultComboBoxModel<>(AppSettingsState.ServiceType.values()));
-
-        // Initialize Claude Code proxy mode dropdown
-        claudeCodeProxyModeComboBox.setModel(new DefaultComboBoxModel<>(new String[]{"openai", "openwebui"}));
     }
 
     private void createUIComponents() {
@@ -51,7 +48,7 @@ public class AppSettingsComponent {
     }
 
     public boolean getAutoStart() {
-        return autoStartCheckbox != null ? autoStartCheckbox.isSelected() : false;  // Explicit default
+        return autoStartCheckbox != null ? autoStartCheckbox.isSelected() : false;
     }
 
     public String getModelFilter() {
@@ -59,32 +56,25 @@ public class AppSettingsComponent {
     }
 
     public AppSettingsState.ServiceType getServiceType() {
-        return serviceTypeComboBox != null ? (AppSettingsState.ServiceType) serviceTypeComboBox.getSelectedItem() : AppSettingsState.ServiceType.OPENAI_COMPATIBLE;
+        return serviceTypeComboBox != null ? (AppSettingsState.ServiceType) serviceTypeComboBox.getSelectedItem() : AppSettingsState.ServiceType.OPENAI;
     }
 
-    // Anthropic/Claude Code getters
-    public String getAnthropicApiKey() {
-        return anthropicApiKeyField != null ? new String(anthropicApiKeyField.getPassword()) : "";
+    // General model getters
+    public String getNormalModel() {
+        return normalModelField != null ? normalModelField.getText() : "";
     }
 
-    public String getAnthropicBaseUrl() {
-        return anthropicBaseUrlField != null ? anthropicBaseUrlField.getText() : "";
+    public String getSmallModel() {
+        return smallModelField != null ? smallModelField.getText() : "";
     }
 
-    public String getAnthropicModel() {
-        return anthropicModelField != null ? anthropicModelField.getText() : "";
+    // OpenRouter provider preference getters
+    public String getOpenrouterNormalProvider() {
+        return openrouterNormalProviderField != null ? openrouterNormalProviderField.getText() : "";
     }
 
-    public String getAnthropicSmallFastModel() {
-        return anthropicSmallFastModelField != null ? anthropicSmallFastModelField.getText() : "";
-    }
-
-    public String getClaudeCodeProxyMode() {
-        return claudeCodeProxyModeComboBox != null ? (String) claudeCodeProxyModeComboBox.getSelectedItem() : "openai";
-    }
-
-    public String getOpenrouterProvider() {
-        return openrouterProviderField != null ? openrouterProviderField.getText() : "";
+    public String getOpenrouterSmallProvider() {
+        return openrouterSmallProviderField != null ? openrouterSmallProviderField.getText() : "";
     }
 
     // --- SETTERS ---
@@ -110,32 +100,26 @@ public class AppSettingsComponent {
     }
 
     public void setServiceType(AppSettingsState.ServiceType serviceType) {
-        if (serviceTypeComboBox != null) serviceTypeComboBox.setSelectedItem(serviceType);
+        if (serviceTypeComboBox != null) {
+            serviceTypeComboBox.setSelectedItem(serviceType);
+        }
     }
 
-    // Anthropic/Claude Code setters
-    public void setAnthropicApiKey(String text) {
-        if (anthropicApiKeyField != null) anthropicApiKeyField.setText(text);
+    // General model setters
+    public void setNormalModel(String text) {
+        if (normalModelField != null) normalModelField.setText(text);
     }
 
-    public void setAnthropicBaseUrl(String text) {
-        if (anthropicBaseUrlField != null) anthropicBaseUrlField.setText(text);
+    public void setSmallModel(String text) {
+        if (smallModelField != null) smallModelField.setText(text);
     }
 
-    public void setAnthropicModel(String text) {
-        if (anthropicModelField != null) anthropicModelField.setText(text);
+    // OpenRouter provider preference setters
+    public void setOpenrouterNormalProvider(String text) {
+        if (openrouterNormalProviderField != null) openrouterNormalProviderField.setText(text);
     }
 
-    public void setAnthropicSmallFastModel(String text) {
-        if (anthropicSmallFastModelField != null) anthropicSmallFastModelField.setText(text);
+    public void setOpenrouterSmallProvider(String text) {
+        if (openrouterSmallProviderField != null) openrouterSmallProviderField.setText(text);
     }
-
-    public void setClaudeCodeProxyMode(String mode) {
-        if (claudeCodeProxyModeComboBox != null) claudeCodeProxyModeComboBox.setSelectedItem(mode);
-    }
-
-    public void setOpenrouterProvider(String text) {
-        if (openrouterProviderField != null) openrouterProviderField.setText(text);
-    }
-
 }

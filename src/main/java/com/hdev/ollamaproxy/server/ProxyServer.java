@@ -20,12 +20,19 @@ public class ProxyServer {
         }
 
         AppSettingsState settings = AppSettingsState.getInstance();
-        if (settings.openAiApiKey == null || settings.openAiApiKey.trim().isEmpty()) {
-            showNotification("OpenAI API Key is not set. Please configure it in Settings -> Tools -> Ollama OpenAI Proxy.", NotificationType.ERROR);
+
+        // Check if API key is configured
+        boolean hasApiKey = settings.apiKey != null && !settings.apiKey.trim().isEmpty();
+
+        if (!hasApiKey) {
+            showNotification("No API key configured. Please set API key in Settings -> Tools -> Ollama OpenAI Proxy.", NotificationType.ERROR);
             return;
         }
 
-        // Note: Anthropic API key is optional - endpoints will handle validation individually
+        // Log which endpoints will be available based on service type
+        System.out.println("Service type: " + settings.serviceType);
+        System.out.println("Base URL: " + settings.baseUrl);
+        System.out.println("API endpoints will be available for: " + settings.serviceType.toString());
 
         try {
             OllamaProxyHandler handler = new OllamaProxyHandler();
@@ -41,6 +48,7 @@ public class ProxyServer {
 
             // Register Anthropic/Claude Code endpoints
             app.post("/v1/messages", anthropicHandler::handleMessages);
+            app.post("/v1/tool-response", anthropicHandler::handleMessages); // Endpoint for tool responses, uses the same handler with header detection
             app.get("/v1/models", anthropicHandler::handleModels);
             app.get("/health", anthropicHandler::handleHealth);
 

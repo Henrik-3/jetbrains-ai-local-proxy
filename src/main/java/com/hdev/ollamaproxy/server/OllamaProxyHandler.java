@@ -25,10 +25,10 @@ public class OllamaProxyHandler {
         AppSettingsState settings = AppSettingsState.getInstance();
         this.serviceType = settings.serviceType;
 
-        if (this.serviceType == AppSettingsState.ServiceType.OPEN_WEBUI) {
-            this.providerClient = new OllamaWebUIClient(settings.openAiApiKey, settings.openAiBaseUrl);
+        if (this.serviceType == AppSettingsState.ServiceType.OPENWEBUI) {
+            this.providerClient = new OllamaWebUIClient(settings.apiKey, settings.baseUrl);
         } else {
-            this.providerClient = new OpenAICompatibleClient(settings.openAiApiKey, settings.openAiBaseUrl);
+            this.providerClient = new OpenAICompatibleClient(settings.apiKey, settings.baseUrl);
         }
     }
 
@@ -86,7 +86,7 @@ public class OllamaProxyHandler {
         String content;
         String finishReason = "stop";
 
-        if (serviceType == AppSettingsState.ServiceType.OPENAI_COMPATIBLE) {
+        if (serviceType == AppSettingsState.ServiceType.OPENAI) {
             JsonNode choice = responseJson.path("choices").get(0);
             content = choice.path("message").path("content").asText();
             finishReason = choice.path("finish_reason").asText("stop");
@@ -131,7 +131,7 @@ public class OllamaProxyHandler {
                     if (delta.has("content")) {
                         content = delta.get("content").asText("");
                     }
-                    
+
                     ObjectNode messageNode = mapper.createObjectNode();
                     messageNode.put("role", "assistant");
                     messageNode.put("content", content);
