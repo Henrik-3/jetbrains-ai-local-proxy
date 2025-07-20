@@ -1,70 +1,57 @@
-## Jetbrains AI Ollama Proxy Plugin
-Docs TBD
+## JetBrains AI & Claude Code Proxy Plugin
 
-## Claude Code Support
-The plugin now supports Anthropic/Claude API endpoints with automatic conversion to OpenAI/OpenWebUI format.
+This plugin enables JetBrains IDEs (IntelliJ IDEA, PyCharm, WebStorm, etc.) to work with various AI providers (Ollama, Claude, OpenRouter) by providing OpenAI-compatible API endpoints. It also enables **Claude Code** to work seamlessly with different AI backends.
+
+## Use Cases
+
+### 1. JetBrains AI Assistant
+Connect JetBrains AI Assistant to local Ollama models or cloud providers like OpenRouter.
+
+### 2. Claude Code Integration  
+Enable Claude Code to use different AI providers through OpenAI-compatible endpoints.
+
+## Quick Start Guide
 
 ### Configuration
-Configure the following settings in the plugin settings UI (Settings -> Tools -> Ollama OpenAI Proxy):
+Configure the following settings in the plugin settings UI (Settings -> Tools -> AI Service Proxy):
 
-**Anthropic Settings:**
-- **Anthropic Base URL**: Base URL for the API (e.g., `https://api.anthropic.com` or `https://openrouter.ai/api/v1`)
-- **Anthropic API Key**: Your API key for Anthropic/OpenRouter
-- **Main Model**: Primary model (e.g., `claude-3-sonnet-20240229` or `anthropic/claude-sonnet-4`)
-- **Small Fast Model**: Fast model for quick responses (e.g., `claude-3-haiku-20240307`)
-- **Proxy Mode**: Target API format - `openai` for OpenRouter/OpenAI-compatible or `openwebui` for OpenWebUI
-- **OpenRouter Provider**: Optional provider preference for OpenRouter (e.g., `groq`, `cerebras`)
+1. **Service Type**: Select the type of AI service you are using (OpenAI, OpenWebUI, etc.)
+2. **API Key**: Enter your API key for the selected service
+3. **Base URL**: Enter the base URL of the API (e.g., https://openrouter.ai, https://api.openai.com/)
+4. **Port**: Choose the port for the proxy server (default is 11434)
+5. **Auto-start Server**: Check this box to automatically start the proxy server when the IDE opens
+6. **Model Filter**: Enter a list of models you want to expose (one model per line)
+7. **Normal Model**: Enter the name of the model you want to use for normal requests (Claude Code Main Model, original default model used by claude code: anthropic/claude-sonnet-4, new default: moonshotai/kimi-k2)
+8. **Small Model**: Enter the name of the model you want to use for small requests (Claude Code Small Fast Model, original default model used by claude code: anthropic/claude-haiku-3.5, new default: mistralai/devstral-small)
+9. **OpenRouter Normal Provider**: Enter the name of the provider you want to use for normal requests (only relevant when using OpenRouter, list of available providers: https://openrouter.ai/docs/features/provider-routing#json-schema-for-provider-preferences)
+10. **OpenRouter Small Provider**: Enter the name of the provider you want to use for small requests (only relevant when using OpenRouter, list of available providers: https://openrouter.ai/docs/features/provider-routing#json-schema-for-provider-preferences)
 
-### Available Endpoints
-When the proxy server is running, the following Anthropic-compatible endpoints are available:
+### JetBrains AI Assistant
+1. Go to Settings -> Tools -> AI Assistant -> Models
+2. Tick the checkbox on "Enable Ollama"
+3. Set the ollama URL to "http://localhost:11434"
+4. Click on "Test Connection" to verify the connection
+5. Select a model for core features (code gen, commit messages etc.)
+6. Select a model for instant helpers (name suggestions etc.)
 
-- `POST /v1/messages` - Anthropic chat completions (supports streaming)
-- `GET /v1/models` - List available models
-- `GET /v1/health` - Health check endpoint
-
-### Features
-- **Format Conversion**: Automatically converts between Anthropic and OpenAI message formats
-- **Tool Support**: Handles tool calls and tool results with proper validation
-- **Streaming**: Full support for Server-Sent Events streaming
-- **OpenRouter Integration**: Special handling for OpenRouter with provider preferences
-- **OpenWebUI Support**: Compatible with OpenWebUI endpoints
-
-### Example Usage
-Once configured and the proxy server is started (default port 11434), you can use standard Anthropic API calls:
-
-```bash
-# Non-streaming chat completion
-curl -X POST http://localhost:11434/v1/messages \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "claude-3-sonnet-20240229",
-    "messages": [
-      {"role": "user", "content": "Hello, Claude!"}
-    ],
-    "max_tokens": 100
-  }'
-
-# Streaming chat completion
-curl -X POST http://localhost:11434/v1/messages \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "claude-3-sonnet-20240229",
-    "messages": [
-      {"role": "user", "content": "Tell me a story"}
-    ],
-    "stream": true,
-    "max_tokens": 500
-  }'
-
-# List available models
-curl http://localhost:11434/v1/models
-```
-
-The proxy will automatically convert these Anthropic-format requests to OpenAI format and route them to your configured backend (OpenRouter, OpenWebUI, etc.).
-- OPENROUTER_FAST_PROVIDER => Optional, targets a specific provider for the small fast model (e.g. groq, cerebras), only works when using openrouter
-
-Create a new file in:
-$HOME/.claude/settings.json and add the following:
+### Claude Code
+1. Install Claude Code: `npm install -g @anthropic-ai/claude-code`
+2. Add the Jetbrains Claude Code Plugin (optional, but recommended for better integration) via the Jetbrains Plugin Marketplace
+3. Open the respective config file
+   - Windows: `%USERPROFILE%\.claude\settings.json`
+   - Linux: `~/.claude/settings.json`
+4. Set the following settings:
+```json
 {
-  "apiKeyHelper": "echo <API KEY>"
+  "apiKeyHelper": "echo [API-KEY]",
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://127.0.0.1:11434",
+    "ANTHROPIC_API_KEY": "[API-KEY]",
+    "ANTHROPIC_MODEL": "base_model",
+    "ANTHROPIC_SMALL_FAST_MODEL": "small_fast_model"
+  }
 }
+```
+! DO NOT CHANGE THE `ANTHROPIC_MODEL` AND `ANTHROPIC_SMALL_FAST_MODEL` VALUES! THEY ARE USED BY THE PROXY PLUGIN TO MAP THE MODELS YOU CONFIGURED IN THE PLUGIN SETTINGS IN JETBRAINS!
+5. Start Claude Code via: `claude` or in the upper right corner of the IDE
+ 
