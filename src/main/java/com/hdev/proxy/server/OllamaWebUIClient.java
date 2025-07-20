@@ -52,10 +52,15 @@ public class OllamaWebUIClient implements ProviderClient {
 
     @Override
     public String chat(ObjectNode request) throws Exception {
-        // ✅ Do NOT force streaming
-        request.put("stream", false);
+        // Convert Ollama tool calls to OpenAI format if needed
+        ObjectNode convertedRequest = OllamaToolCallConverter.hasToolCalls(request)
+                ? OllamaToolCallConverter.convertOllamaToOpenAI(request)
+                : request;
 
-        RequestBody body = RequestBody.create(request.toString(), MediaType.get("application/json"));
+        // ✅ Do NOT force streaming
+        convertedRequest.put("stream", false);
+
+        RequestBody body = RequestBody.create(convertedRequest.toString(), MediaType.get("application/json"));
         Request apiRequest = new Request.Builder().url(baseUrl + "api/chat/completions").post(body).build();
 
         try (Response response = httpClient.newCall(apiRequest).execute()) {
@@ -65,6 +70,12 @@ public class OllamaWebUIClient implements ProviderClient {
 
             String responseBody = response.body().string();
             JsonNode json = mapper.readTree(responseBody);
+
+            // Check if response has tool calls
+            if (OllamaToolCallConverter.responseHasToolCalls(json)) {
+                // Return OpenAI format response converted to Ollama format
+                return OllamaToolCallConverter.convertOpenAIToOllama((ObjectNode) json, request.get("model").asText()).toString();
+            }
 
             // ✅ If upstream returns a chat/completion format, wrap it into Ollama-style
             ObjectNode message = mapper.createObjectNode();
@@ -93,13 +104,18 @@ public class OllamaWebUIClient implements ProviderClient {
 
     @Override
     public void chatStream(ObjectNode request, Context ctx, StreamHandler handler) throws Exception {
-        // CRITICAL FIX: Explicitly set stream to true for the upstream request.
-        request.put("stream", true);
-        request.remove("keep_alive");
-        request.remove("options");
+        // Convert Ollama tool calls to OpenAI format if needed
+        ObjectNode convertedRequest = OllamaToolCallConverter.hasToolCalls(request)
+                ? OllamaToolCallConverter.convertOllamaToOpenAI(request)
+                : request;
 
-        RequestBody body = RequestBody.create(request.toString(), MediaType.get("application/json"));
-        LOG.info("Request: " + request.toString());
+        // CRITICAL FIX: Explicitly set stream to true for the upstream request.
+        convertedRequest.put("stream", true);
+        convertedRequest.remove("keep_alive");
+        convertedRequest.remove("options");
+
+        RequestBody body = RequestBody.create(convertedRequest.toString(), MediaType.get("application/json"));
+        LOG.info("Request: " + convertedRequest.toString());
         Request apiRequest = new Request.Builder()
                 .url(baseUrl + "api/chat/completions")
                 .header("Accept", "application/x-ndjson")
@@ -126,7 +142,16 @@ public class OllamaWebUIClient implements ProviderClient {
                         LOG.info("Response: " + jsonStr);
 
                         try {
-                            handler.handle(jsonStr);
+                            // Convert streaming chunks with tool calls if needed
+                            JsonNode chunkJson = mapper.readTree(jsonStr);
+                            if (OllamaToolCallConverter.responseHasToolCalls(chunkJson)) {
+                                ObjectNode convertedChunk = OllamaToolCallConverter.convertStreamChunkToOllama(
+                                        (ObjectNode) chunkJson, request.get("model").asText()
+                                );
+                                handler.handle(convertedChunk.toString());
+                            } else {
+                                handler.handle(jsonStr);
+                            }
                         } catch (Exception e) {
                             LOG.error("Error handling stream chunk: " + jsonStr);
                             e.printStackTrace();

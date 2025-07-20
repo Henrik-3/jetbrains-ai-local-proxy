@@ -20,7 +20,7 @@ dependencies {
 
     // For other dependencies that also use Jackson, we keep them as 'implementation'
     // but explicitly exclude their transitive Jackson dependency to avoid conflicts.
-    implementation('com.openai:openai-java:2.12.4') {
+    implementation('com.openai:openai-java:2.16.0') {
         exclude group: 'com.fasterxml.jackson.core'
     }
     implementation('io.javalin:javalin:6.7.0') {

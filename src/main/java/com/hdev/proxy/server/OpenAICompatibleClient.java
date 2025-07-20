@@ -7,9 +7,8 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.core.http.StreamResponse;
-import com.openai.models.chat.completions.ChatCompletion;
-import com.openai.models.chat.completions.ChatCompletionChunk;
-import com.openai.models.chat.completions.ChatCompletionCreateParams;
+import com.openai.models.chat.completions.*;
+import com.openai.core.JsonValue;
 import io.javalin.http.Context;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -22,7 +21,7 @@ import java.util.Objects;
 
 /**
  * Drop‑in replacement that targets the official
- * {@code com.openai:openai-java:2.12.4} SDK instead of the now‑deprecated
+ * {@code com.openai:openai-java:2.16.0} SDK instead of the now‑deprecated
  * Theo Kanning retrofit client.
  */
 public class OpenAICompatibleClient implements ProviderClient {
@@ -112,6 +111,29 @@ public class OpenAICompatibleClient implements ProviderClient {
                 case "user" -> builder.addUserMessage(content);
                 default -> builder.addUserMessage(content); // fallback
             }
+        }
+
+        // Add tool support using the latest OpenAI Java SDK API
+        if (request.has("tools")) {
+            JsonNode toolsNode = request.get("tools");
+            if (toolsNode.isArray()) {
+                for (JsonNode tool : toolsNode) {
+                    // Extract tool definition
+                    JsonNode function = tool.get("function");
+                    if (function != null) {
+                        // Build tool parameter using the latest OpenAI SDK structure
+                        // Using string-based approach for now to avoid API compatibility issues
+                        builder.putAdditionalBodyProperty("tools", JsonValue.from(toolsNode));
+                        break; // Add all tools at once
+                    }
+                }
+            }
+        }
+
+        // Add tool_choice if present
+        if (request.has("tool_choice")) {
+            JsonNode toolChoice = request.get("tool_choice");
+            builder.putAdditionalBodyProperty("tool_choice", JsonValue.from(toolChoice));
         }
 
         return builder.build();

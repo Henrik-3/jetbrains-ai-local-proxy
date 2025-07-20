@@ -2,6 +2,7 @@ package com.hdev.proxy.server;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.hdev.proxy.config.AppSettingsState;
 import io.javalin.http.Context;
@@ -80,29 +81,70 @@ public class OllamaProxyHandler {
         String providerResponse = providerClient.chat(request);
         JsonNode responseJson = mapper.readTree(providerResponse);
 
+        // Check if this is already an Ollama-format response (from OllamaWebUIClient with tool calls)
+        if (responseJson.has("message") && responseJson.has("done")) {
+            // Already in Ollama format, return as-is
+            ctx.json(responseJson);
+            return;
+        }
+
         // Translate the response back to Ollama format
         ObjectNode ollamaResponse = mapper.createObjectNode();
-        String content;
+        String content = "";
         String finishReason = "stop";
 
         if (serviceType == AppSettingsState.ServiceType.OPENAI) {
             JsonNode choice = responseJson.path("choices").get(0);
-            content = choice.path("message").path("content").asText();
+            JsonNode message = choice.path("message");
+
+            // Handle tool calls in OpenAI format
+            if (message.has("tool_calls")) {
+                ObjectNode ollamaMessage = mapper.createObjectNode();
+                ollamaMessage.put("role", "assistant");
+                ollamaMessage.put("content", message.path("content").asText(""));
+
+                // Convert tool calls to Ollama format
+                if (message.get("tool_calls").isArray()) {
+                    ArrayNode toolCalls = mapper.createArrayNode();
+                    for (JsonNode toolCall : message.get("tool_calls")) {
+                        ObjectNode ollamaToolCall = mapper.createObjectNode();
+                        ollamaToolCall.put("id", toolCall.get("id").asText());
+                        ollamaToolCall.put("type", toolCall.get("type").asText());
+
+                        ObjectNode function = mapper.createObjectNode();
+                        function.put("name", toolCall.get("function").get("name").asText());
+                        function.put("arguments", toolCall.get("function").get("arguments").asText());
+
+                        ollamaToolCall.set("function", function);
+                        toolCalls.add(ollamaToolCall);
+                    }
+                    ollamaMessage.set("tool_calls", toolCalls);
+                }
+
+                ollamaResponse.set("message", ollamaMessage);
+            } else {
+                content = message.path("content").asText();
+                ObjectNode messageNode = mapper.createObjectNode();
+                messageNode.put("role", "assistant");
+                messageNode.put("content", content);
+                ollamaResponse.set("message", messageNode);
+            }
+
             finishReason = choice.path("finish_reason").asText("stop");
         } else { // OpenWebUI/Ollama format
             content = responseJson.path("message").path("content").asText();
             if(responseJson.has("finish_reason")) {
                 finishReason = responseJson.path("finish_reason").asText("stop");
             }
-        }
 
-        ObjectNode messageNode = mapper.createObjectNode();
-        messageNode.put("role", "assistant");
-        messageNode.put("content", content);
+            ObjectNode messageNode = mapper.createObjectNode();
+            messageNode.put("role", "assistant");
+            messageNode.put("content", content);
+            ollamaResponse.set("message", messageNode);
+        }
 
         ollamaResponse.put("model", request.get("model").asText());
         ollamaResponse.put("created_at", DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
-        ollamaResponse.set("message", messageNode);
         ollamaResponse.put("done", true);
         ollamaResponse.put("finish_reason", finishReason);
 
@@ -115,7 +157,6 @@ public class OllamaProxyHandler {
         ctx.res().setBufferSize(0);
         var outputStream = ctx.res().getOutputStream();
 
-
         try {
             // The main streaming logic
             providerClient.chatStream(request, ctx, chunkString -> {
@@ -123,22 +164,86 @@ public class OllamaProxyHandler {
                     if (chunkString.isBlank()) return;
 
                     JsonNode chunkJson = mapper.readTree(chunkString);
+
+                    // Check if this is already in Ollama format (from OllamaWebUIClient)
+                    if (chunkJson.has("message") && chunkJson.has("model")) {
+                        // Already converted by OllamaWebUIClient, send as-is
+                        String ndjsonLine = chunkString + "\n";
+                        outputStream.write(ndjsonLine.getBytes(StandardCharsets.UTF_8));
+                        outputStream.flush();
+                        return;
+                    }
+
                     ObjectNode ollamaChunk = mapper.createObjectNode();
                     String content = "";
 
-                    JsonNode delta = chunkJson.path("choices").get(0).path("delta");
-                    if (delta.has("content")) {
-                        content = delta.get("content").asText("");
-                    }
+                    // Handle OpenAI streaming format
+                    if (chunkJson.has("choices") && chunkJson.get("choices").isArray()) {
+                        JsonNode choice = chunkJson.get("choices").get(0);
+                        JsonNode delta = choice.path("delta");
 
-                    ObjectNode messageNode = mapper.createObjectNode();
-                    messageNode.put("role", "assistant");
-                    messageNode.put("content", content);
+                        ObjectNode messageNode = mapper.createObjectNode();
+                        messageNode.put("role", "assistant");
+
+                        if (delta.has("content")) {
+                            content = delta.get("content").asText("");
+                            messageNode.put("content", content);
+                        } else {
+                            messageNode.put("content", "");
+                        }
+
+                        // Handle tool calls in streaming delta
+                        if (delta.has("tool_calls")) {
+                            ArrayNode toolCalls = mapper.createArrayNode();
+                            for (JsonNode toolCall : delta.get("tool_calls")) {
+                                ObjectNode ollamaToolCall = mapper.createObjectNode();
+
+                                if (toolCall.has("id")) {
+                                    ollamaToolCall.put("id", toolCall.get("id").asText());
+                                }
+                                if (toolCall.has("type")) {
+                                    ollamaToolCall.put("type", toolCall.get("type").asText());
+                                }
+
+                                if (toolCall.has("function")) {
+                                    ObjectNode function = mapper.createObjectNode();
+                                    JsonNode funcNode = toolCall.get("function");
+
+                                    if (funcNode.has("name")) {
+                                        function.put("name", funcNode.get("name").asText());
+                                    }
+                                    if (funcNode.has("arguments")) {
+                                        function.put("arguments", funcNode.get("arguments").asText());
+                                    }
+
+                                    ollamaToolCall.set("function", function);
+                                }
+
+                                toolCalls.add(ollamaToolCall);
+                            }
+                            messageNode.set("tool_calls", toolCalls);
+                        }
+
+                        ollamaChunk.set("message", messageNode);
+
+                        // Check for finish reason
+                        if (choice.has("finish_reason") && !choice.get("finish_reason").isNull()) {
+                            ollamaChunk.put("done", true);
+                            ollamaChunk.put("finish_reason", choice.get("finish_reason").asText());
+                        } else {
+                            ollamaChunk.put("done", false);
+                        }
+                    } else {
+                        // Fallback for other formats
+                        ObjectNode messageNode = mapper.createObjectNode();
+                        messageNode.put("role", "assistant");
+                        messageNode.put("content", content);
+                        ollamaChunk.set("message", messageNode);
+                        ollamaChunk.put("done", false);
+                    }
 
                     ollamaChunk.put("model", request.get("model").asText());
                     ollamaChunk.put("created_at", DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
-                    ollamaChunk.set("message", messageNode);
-                    ollamaChunk.put("done", false);
 
                     // Write the chunk. This will throw an IOException if the client has disconnected.
                     String ndjsonLine = ollamaChunk.toString() + "\n";
