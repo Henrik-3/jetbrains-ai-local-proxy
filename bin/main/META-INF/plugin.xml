@@ -1,5 +1,5 @@
 <idea-plugin>
-<id>com.hdev.ollamaproxy</id>
+<id>com.hdev.proxy</id>
 <name>Jetbrains AI Proxy</name>
 <vendor>Henrik Mertens</vendor>
 
@@ -24,7 +24,7 @@
     <applicationConfigurable
             parentId="tools"
             instance="com.hdev.ollamaproxy.config.AppSettingsConfigurable"
-            id="com.hdev.ollamaproxy.settings"
+            id="com.hdev.proxy.settings"
             displayName="Ollama OpenAI Proxy"/>
 
     <!-- Register the service to store settings -->

@@ -1,18 +1,20 @@
 <idea-plugin>
-<id>com.hdev.ollamaproxy</id>
+<id>com.hdev.proxy</id>
 <name>Jetbrains AI Proxy</name>
 <vendor>Henrik Mertens</vendor>
 
-<description><![CDATA[
-    Provides a local proxy server to adapt OpenAI-compatible APIs (like OpenRouter) to the Ollama API format.<br>
-    This allows tools like Open WebUI to connect to any OpenAI-compatible service.<br>
+    <description><![CDATA[
+    Provides a local proxy server to adapt AI APIs to different formats for use with IDE coding tools.<br>
     Features:
     <ul>
+        <li>Support for multiple AI service types (OpenAI, OpenWebUI)</li>
         <li>Start/Stop proxy server from the IDE.</li>
         <li>Auto-start server on project open.</li>
-        <li>Configurable API Key, Endpoint URL, and Port.</li>
-        <li>Manage a filter list for available models.</li>
-        <li>Supports streaming and non-streaming chat.</li>
+        <li>Configurable settings per service (API Key, Endpoint URL, Port)</li>
+        <li>Model selection for different usage scenarios</li>
+        <li>Provider preferences for OpenRouter</li>
+        <li>Streaming and non-streaming chat support</li>
+        <li>Tool support for Anthropic/Claude Code</li>
     </ul>
     ]]></description>
 
@@ -23,34 +25,34 @@
     <!-- Register the Settings/Preferences panel -->
     <applicationConfigurable
             parentId="tools"
-            instance="com.hdev.ollamaproxy.config.AppSettingsConfigurable"
-            id="com.hdev.ollamaproxy.settings"
-            displayName="Ollama OpenAI Proxy"/>
+            instance="com.hdev.proxy.config.AppSettingsConfigurable"
+            id="com.hdev.proxy.settings"
+            displayName="AI Service Proxy"/>
 
     <!-- Register the service to store settings -->
     <applicationService
-            serviceImplementation="com.hdev.ollamaproxy.config.AppSettingsState"/>
+            serviceImplementation="com.hdev.proxy.config.AppSettingsState"/>
 
     <!-- Register the startup activity for the auto-start feature -->
     <postStartupActivity
-            implementation="com.hdev.ollamaproxy.service.PluginStartupActivity"/>
+            implementation="com.hdev.proxy.service.PluginStartupActivity"/>
 </extensions>
 
 <actions>
-    <group id="OllamaProxy.Actions" text="Ollama Proxy" popup="true">
+    <group id="AIServiceProxy.Actions" text="AI Service Proxy" popup="true">
         <add-to-group group-id="ToolsMenu" anchor="last"/>
         <!-- Action to start the proxy server -->
-        <action id="OllamaProxy.Start"
-                class="com.hdev.ollamaproxy.actions.StartProxyAction"
+        <action id="AIServiceProxy.Start"
+                class="com.hdev.proxy.actions.StartProxyAction"
                 text="Start Proxy Server"
-                description="Starts the Ollama proxy server"
+                description="Starts the proxy server"
                 icon="AllIcons.Actions.Execute"/>
 
         <!-- Action to stop the proxy server -->
-        <action id="OllamaProxy.Stop"
-                class="com.hdev.ollamaproxy.actions.StopProxyAction"
+        <action id="AIServiceProxy.Stop"
+                class="com.hdev.proxy.actions.StopProxyAction"
                 text="Stop Proxy Server"
-                description="Stops the Ollama proxy server"
+                description="Stops the proxy server"
                 icon="AllIcons.Actions.Suspend"/>
     </group>
 </actions>
