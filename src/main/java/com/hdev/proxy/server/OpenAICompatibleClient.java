@@ -77,6 +77,8 @@ public class OpenAICompatibleClient implements ProviderClient {
     public void chatStream(ObjectNode request, Context ctx, StreamHandler handler) {
         ChatCompletionCreateParams params = buildParams(request);
 
+        System.out.println("params: " + params);
+
         // The SDK returns a StreamResponse we can iterate over.
         try (StreamResponse<ChatCompletionChunk> stream =
                      client.chat().completions().createStreaming(params)) {
@@ -101,16 +103,40 @@ public class OpenAICompatibleClient implements ProviderClient {
         ChatCompletionCreateParams.Builder builder = ChatCompletionCreateParams.builder()
                 .model(request.get("model").asText());
 
-        // Map each OpenAI‑style message (role, content)
-        for (JsonNode node : request.get("messages")) {
+        JsonNode messagesNode = request.get("messages");
+        java.util.List<JsonNode> messages = new java.util.ArrayList<>();
+        messagesNode.forEach(messages::add);
+
+        // Clean up message sequence for Mistral compatibility BEFORE processing
+        messages = cleanMessageSequence(messages);
+
+        // Map each cleaned message to the builder - but handle tools separately
+        for (JsonNode node : messages) {
             String role = node.get("role").asText();
             String content = node.get("content").asText();
+
             switch (role) {
                 case "system" -> builder.addSystemMessage(content);
                 case "assistant" -> builder.addAssistantMessage(content);
                 case "user" -> builder.addUserMessage(content);
-                default -> builder.addUserMessage(content); // fallback
+                case "tool", "function" -> {
+                    // Tool messages need to be passed through as raw JSON
+                    // We'll add all messages as additional body property to preserve tool structure
+                }
+                default -> {
+                    System.err.println("Warning: Unexpected message role '" + role + "', skipping: " + content);
+                }
             }
+        }
+
+        // If we have any tool/function messages, pass all messages as raw JSON to preserve structure
+        boolean hasToolMessages = messages.stream()
+                .anyMatch(msg -> "tool".equals(msg.get("role").asText()) ||
+                        "function".equals(msg.get("role").asText()));
+
+        if (hasToolMessages) {
+            // Override with raw messages to preserve tool message structure
+            builder.putAdditionalBodyProperty("messages", JsonValue.from(messages));
         }
 
         // Add tool support using the latest OpenAI Java SDK API
@@ -118,11 +144,8 @@ public class OpenAICompatibleClient implements ProviderClient {
             JsonNode toolsNode = request.get("tools");
             if (toolsNode.isArray()) {
                 for (JsonNode tool : toolsNode) {
-                    // Extract tool definition
                     JsonNode function = tool.get("function");
                     if (function != null) {
-                        // Build tool parameter using the latest OpenAI SDK structure
-                        // Using string-based approach for now to avoid API compatibility issues
                         builder.putAdditionalBodyProperty("tools", JsonValue.from(toolsNode));
                         break; // Add all tools at once
                     }
@@ -137,5 +160,38 @@ public class OpenAICompatibleClient implements ProviderClient {
         }
 
         return builder.build();
+    }
+
+    /**
+     * Clean up message sequence to ensure compatibility with strict providers like Mistral
+     * Ensures tool/function messages are followed by assistant messages, never by user messages
+     */
+    private java.util.List<JsonNode> cleanMessageSequence(java.util.List<JsonNode> messages) {
+        java.util.List<JsonNode> cleaned = new java.util.ArrayList<>();
+
+        for (int i = 0; i < messages.size(); i++) {
+            JsonNode message = messages.get(i);
+            String currentRole = message.get("role").asText();
+
+            cleaned.add(message);
+
+            // Check if this is a tool/function message followed by a user message
+            if (("tool".equals(currentRole) || "function".equals(currentRole)) &&
+                    i + 1 < messages.size()) {
+
+                JsonNode nextMessage = messages.get(i + 1);
+                String nextRole = nextMessage.get("role").asText();
+
+                if ("user".equals(nextRole)) {
+                    // Insert an assistant message between tool and user
+                    ObjectNode assistantMessage = mapper.createObjectNode();
+                    assistantMessage.put("role", "assistant");
+                    assistantMessage.put("content", "I've processed the tool result. How can I help you further?");
+                    cleaned.add(assistantMessage);
+                }
+            }
+        }
+
+        return cleaned;
     }
 }

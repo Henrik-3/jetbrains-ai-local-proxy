@@ -267,7 +267,9 @@ public class AnthropicMessageConverter {
                 }
             } else if ("user".equals(role)) {
                 StringBuilder userTextContent = new StringBuilder();
+                List<ObjectNode> toolMessages = new ArrayList<>();
 
+                // First pass: collect tool results and user text separately
                 for (JsonNode contentPart : content) {
                     String type = contentPart.path("type").asText();
                     if ("text".equals(type)) {
@@ -281,12 +283,28 @@ public class AnthropicMessageConverter {
                         JsonNode toolContent = contentPart.path("content");
                         String contentStr = toolContent.isTextual() ? toolContent.asText() : toolContent.toString();
                         toolMessage.put("content", contentStr);
-                        openAIMessages.add(toolMessage);
+                        toolMessages.add(toolMessage);
                     }
                 }
 
+                // Add tool messages first (these should come after assistant tool_calls)
+                for (ObjectNode toolMessage : toolMessages) {
+                    openAIMessages.add(toolMessage);
+                }
+
+                // Only add user message if there's actual text content AND no tool results
+                // If there were tool results, the conversation flow should be:
+                // assistant (with tool_calls) -> tool -> assistant (response) -> user (next message)
                 String trimmedUserText = userTextContent.toString().trim();
                 if (!trimmedUserText.isEmpty()) {
+                    // If we just added tool messages, we need an assistant response before the next user message
+                    if (!toolMessages.isEmpty()) {
+                        ObjectNode assistantResponse = mapper.createObjectNode();
+                        assistantResponse.put("role", "assistant");
+                        assistantResponse.put("content", "I've processed the tool results.");
+                        openAIMessages.add(assistantResponse);
+                    }
+
                     ObjectNode userMessage = mapper.createObjectNode();
                     userMessage.put("role", "user");
                     userMessage.put("content", trimmedUserText);
