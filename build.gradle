@@ -44,7 +44,7 @@ intellij {
 
 patchPluginXml {
     sinceBuild = '232'
-    untilBuild = '251.*'
+    untilBuild = '252.*'
 }
 
 signPlugin {
